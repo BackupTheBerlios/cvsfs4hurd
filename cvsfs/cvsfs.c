@@ -76,6 +76,9 @@ enum
     OPT_HOMEDIR = 'h',
     OPT_REMOTE = 'r',
     OPT_NOSTATS = 'n',
+#ifdef HAVE_LIBZ
+    OPT_GZIP = 'z',
+#endif
   };
 
 static const struct argp_option cvsfs_options[] =
@@ -90,7 +93,10 @@ static const struct argp_option cvsfs_options[] =
       "connect through :ext: remote shell client CLIENT to cvs host", 0 },
     { "nostats", OPT_NOSTATS, 0, 0,
       "do not download revisions to aquire stats information", 0 },
-
+#if HAVE_LIBZ
+    { "gzip", OPT_GZIP, "LEVEL", 0,
+      "use gzip compression of specified level for file transfers", 0 },
+#endif
     /* terminate list */
     { NULL, 0, NULL, 0, NULL, 0 }
   };
@@ -123,6 +129,9 @@ main(int argc, char **argv)
   memset(&config, 0, sizeof(config));
   config.cvs_mode = PSERVER;
   config.cvs_username = "anonymous";
+#if HAVE_LIBZ
+  config.gzip_level = 3;
+#endif
 
   /* parse command line parameters, first things first. */
   argp_parse(&argp, argc, argv, 0, 0, 0);
@@ -200,6 +209,12 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
     case OPT_NOSTATS:
       config.nostats = 1;
       break;
+
+#if HAVE_LIBZ
+    case OPT_GZIP:
+      config.gzip_level = atoi(arg);
+      break;
+#endif
 
     case OPT_REMOTE:
       config.cvs_mode = EXT;
