@@ -162,7 +162,7 @@ cvs_handshake(FILE *send, FILE *recv)
   fprintf(send, "Valid-responses "
 	  /* base set of responses, we need to understand those ... */
 	  "ok error Valid-requests M E "
-
+	  "Mod-time " 
 	  /* cvs needs Checked-in Updated Merged and Removed, else it just
 	   * dies, complaining. However we'll never need to understand those,
 	   * as long as our filesystem stays readonly.
