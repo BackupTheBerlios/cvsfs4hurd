@@ -18,6 +18,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #include "cvsfs.h"
 #include "cvs_files.h"
@@ -37,6 +39,40 @@ cvs_files_print_path_recursively(FILE *cvs_handle, struct netnode *dir)
 }
 
 
+/* cvs_files_cvsattr_to_mode_t
+ *
+ * convert cvs mode string to posix style mode_t
+ */
+static mode_t
+cvs_files_cvsattr_to_mode_t(const char *ptr)
+{
+  const mode_t modes[9] =
+    { S_IRUSR, S_IWUSR, S_IXUSR,
+      S_IRGRP, S_IWGRP, S_IXGRP,
+      S_IROTH, S_IWOTH, S_IXOTH
+    };
+  const mode_t *stage = modes;
+  mode_t perm = 0;
+
+  for(;;ptr ++)
+    switch(*ptr)
+      {
+      case 'u': stage = &modes[0]; break;
+      case 'g': stage = &modes[3]; break;
+      case 'o': stage = &modes[6]; break;
+      case '=': break;
+      case ',': break;
+      case 'r': perm |= stage[0]; break;
+      case 'w': perm |= stage[1]; break;
+      case 'x': perm |= stage[2]; break;
+
+      default:
+	return perm;
+      }
+}	  
+
+
+
 /* cvs_files_cache
  *
  * Download the revision (as specified by rev) of the specified file. 
@@ -45,12 +81,7 @@ error_t
 cvs_files_cache(struct netnode *file, struct revision *rev)
 {
   FILE *send, *recv;
-  char *content = NULL;
-  unsigned int content_len = 0;
-  unsigned int content_alloc = 0;
-  unsigned short int got_something = 0;
-
-  char buf[4096]; /* 4k should be enough for most cvs repositories, if
+  char buf[1024]; /* 1k should be enough for most cvs repositories, if
 		   * cvsfs tell's you to increase this value, please do so.
 		   *
 		   * TODO in the far future we may have a fgets-thingy, that
@@ -63,9 +94,12 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 
   /* write out request header */
   fprintf(send,
-	  "UseUnchanged\n"
-	  "Argument -r\nArgument 0\n"
+	  "Argument -l\n" /* local dir only */
+	  "Argument -N\n" /* don't shorten module names */
+	  "Argument -P\n" /* no empty directories */
+	  "Argument -d\nArgument .\n" /* checkout to local dir */
 	  "Argument -r\nArgument %s\n"
+	  "Argument --\n"
 	  "Argument ",
 	  rev->id);
 
@@ -75,12 +109,22 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
   /* last but not least write out the filename */
   fprintf(send, "%s\n", file->name);
 
-  /* we need an rdiff ... */
-  fprintf(send, "rdiff\n");
+  /* okay, send checkout command ... */
+  fprintf(send,
+	  "Directory .\n%s\n" /* cvsroot */
+	  "co\n", config.cvs_root);
 
-  /* okay, now read the server's response, which either is a diff, having
-   * a "M" char in front of each line, or an E, error couple.
+  /* example response:
+   * *** SERVER ***
+   * Mod-time 8 Sep 2004 17:05:43 -0000
+   * Updated ./wsdebug/
+   * /home/cvs/wsdebug/debug.c
+   * /debug.c/1.1///T1.1
+   * u=rw,g=rw,o=rw
+   * 6285
+   * [content]
    */
+
   while(fgets(buf, sizeof(buf), recv))
     {
       char *ptr;
@@ -96,86 +140,89 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	  exit(10);
 	}
 
-      /* chop the linefeed off the end */
-      *ptr = 0;
+      if(buf[0] == '/')
+	continue; /* just file name stuff, as we request only one file
+		   * we don't have to care for that ...
+		   */
 
-      if(! strncmp(buf, "ok", 2))
+      if(! strncmp(buf, "Mod-time ", 9))
 	{
-	  cvs_connection_release(send, recv);
+	  struct tm tm;
+	  time_t t = 0;
 
-	  if(! got_something)
-	    return ENOENT; /* no content, sorry. */
+	  memset(&tm, 0, sizeof(tm));
+	  if(strptime(&buf[9], "%d %b %Y %T ", &tm))
+	    t = mktime(&tm);
+	  
+	  rev->time = t;
+	  continue;
+	}
 
-	  content = realloc(content, content_len + 1);
+      if(! strncmp(buf, "Updated ", 8))
+	continue; /* pathname of parent directory, don't give a fuck ... */
+
+      if(buf[0] == 'M')
+	continue; /* probably something like 'M U <filename>' */
+
+      if(buf[0] == 'u' && buf[1] == '=')
+	rev->perm = cvs_files_cvsattr_to_mode_t(buf);
+
+      else if(buf[0] >= '0' && buf[0] <= '9')
+	{
+	  size_t read;
+	  size_t length = atoi(buf);
+	  size_t bytes = length;
+	  char *content = malloc(bytes);
+	  char *ptr = content;
 
 	  if(! content)
-	    return ENOMEM;
-	    
-	  content[content_len] = 0; /* zero terminate */
-	  rev->contents = content;
-	  
-	  return 0; /* jippie, looks perfectly, he? */
-	}
-
-      if(! strncmp(buf, "error", 5))
-	{
-	  cvs_connection_release(send, recv);
-	  free(content);
-	  return EIO;
-	}
-
-      if(buf[1] != ' ') 
-	{
-	  cvs_treat_error(recv, buf);
-	  cvs_connection_release(send, recv);
-	  free(content);
-	  return EIO; /* hm, doesn't look got for us ... */
-	}
-
-      switch(buf[0])
-	{
-	case 'E':
-	  /* cvs_treat_error(recv, buf); */
-	  /* cvs_connection_release(send, recv); */
-	  /* free(content); */
-	  /* return EIO; */
-
-	  break; /* don't complain, it's probably only a "noch such tag %s"
-		  * message ...
-		  */
-
-	case 'M':
-	  got_something = 1;
-
-	  if(buf[2] != '+')
-	    continue; /* skip patch's header, we don't need it ... */
-
-	  while(content_len + buflen - 4 > content_alloc) 
 	    {
-	      content_alloc = content_alloc ? content_alloc << 2 : 4096;
-	      content = realloc(content, content_alloc);
-	      
-	      if(! content)
-		return ENOMEM; /* doesn't look too good for us :(   */
+	      perror(PACKAGE);
+	      cvs_connection_kill(send, recv);
+	      return ENOMEM;
 	    }
 
-	  memcpy(content + content_len, buf + 4, buflen - 5);
-	  content_len += buflen - 5;
+	  while(bytes && (read = fread(ptr, 1, bytes, recv)))
+	    {
+	      bytes -= read;
+	      ptr += read;
+	    }
 
-	  content[content_len ++] = 10; /* linefeed */
-	  break;
-	  
-	default:
+	  if(bytes)
+	    {
+	      /* unable to read all data ... */
+	      fprintf(stderr, "unable to read whole file %s\n", file->name);
+	      free(content);
+	      cvs_connection_kill(send, recv);
+	      return EIO;
+	    }
+
+	  free(rev->contents);
+	  rev->length = length;
+	  rev->contents = content;
+	}
+      else if(! strncmp(buf, "ok", 2))
+	{
+	  cvs_connection_release(send, recv);
+	  return 0; /* seems like everything went well ... */
+	}
+      else if(buf[0] == 'E')
+	{
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  free(content);
 	  return EIO;
 	}
+      else if(! strncmp(buf, "error", 5))
+	{
+	  cvs_connection_release(send, recv);
+	  return EIO;
+	}
+      else
+	break; /* fuck, what the hell is going on here?? get outta here! */
     }
 
   /* well, got EOF, that shouldn't ever happen ... */
   cvs_connection_kill(send, recv);
-  free(content);
   return EIO;
 }
 
