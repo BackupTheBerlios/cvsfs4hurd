@@ -1,5 +1,8 @@
 	you want to use emacs' -*- outline -*- mode, to read this ...
 
+this file is some kind of TODO file, I use it to take down notes, what to
+do, when and how ...
+
 * first things first
 ** you're welcome to participate in progressing cvsfs4hurd
    if you got questions concerning it, don't hesitate but send me
@@ -25,11 +28,21 @@
 * todos
 ** available stuff left to fix
 *** urgent
-**** add command line parameter to specify cvs user
-     the password however shouldn't be supplyable through command line,
-     since it would be readable using ps Aux.  read from $HOME/.cvspass
-     instead.
-
+**** consider locks here and there
+***** lock cvs connection
+      we should lock the connection to the cvs host, to keep two threads
+      from simultaneously requesting files ...
+***** don't return another nref in cvsfs_make_node
+      but create a new node in any case, else we'd need to do locking which
+      probably costs much more than it brings us ...
+**** several idle timeouts
+     we probably shouldn't hold a connection to the cvs host, all time our
+     filesystem is mounted.  perhaps the user just forgot to settrans -g??
+**** reread whole directory tree after some amount of time passed by
+     let's say every ~30 min. or so? make sure to keep old netnodes and
+     just extend those as necessary - don't ever drop them, 'cause there
+     might be left nodes for them. perhaps adding an 'in-attic-now' flag,
+     telling that the file got deleted in the meantime??
 **** correctly handle timestamps
 ***** update atimes where necessary
 
@@ -53,7 +66,7 @@
    these are somewhat in order of urgency ...
 
 *** support cvs access over ssh (ext), not only pserver
-
+*** support subversion as an alternate backend
 *** write support
 **** try layering unionsfs/shadowfs on top
      in order to e.g. 'make' in a source directory.  we probably have to fix
@@ -62,8 +75,11 @@
      write some documentation on that.
 
 **** supply <filenode>/commit node
-     if user writes to there, use this message as loginfo
+     if user writes to there, use this message as loginfo.  As of now I guess
+     write support is something really tricky, since we need to check-in the
+     diff between the revision our user opened and the one she wrote ...
 
+     maybe glance at Linux' cvsfs sources how they do it, if they do it et all
 *** make loginfo accessible some way
     (<filenode>/history or something)
 
@@ -72,4 +88,4 @@
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.1 2004/09/25 20:47:46 stesie Exp $
+$Id: HACKING,v 1.2 2004/09/26 11:25:11 stesie Exp $
