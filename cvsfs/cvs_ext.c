@@ -63,6 +63,7 @@ cvs_ext_connect(FILE **send, FILE **recv)
 	}
 
       execlp(config.cvs_shell_client, config.cvs_shell_client,
+	     "-p", config.cvs_port ? config.cvs_port : 22,
 	     "-l", config.cvs_username, config.cvs_hostname,
 	     "--", "cvs", "server", NULL);
       exit(1);
