@@ -196,13 +196,20 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   struct netnode *new, *parent = NULL;
   char *end;
 
+  DEBUG("tree-enqueue", "root=%s, path=%s\n", dir ? dir->name : NULL, path);
+
   if(! (end = strchr(path, '/')))
     {
       /* request for root directory, else there would be a '/' within
        * path. return existing rootdir (dir), if available.
        */
-      if(dir) 
-	return dir;
+      if(dir) {
+	if(! strcmp(dir->name, path))
+	  return dir;
+
+	parent = dir;
+	dir = (parent = dir)->child;
+      }
     }
   else do
     {
@@ -236,6 +243,9 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
 	return new;
 
   /* okay, create new directory structure right in place ... */
+  DEBUG("tree-enqueue", "adding new node: parent=%s, path=%s\n",
+	parent ? parent->name : NULL, path);
+
   new = malloc(sizeof(*new));
   if(! new)
     {
