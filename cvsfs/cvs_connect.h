@@ -32,6 +32,13 @@ error_t cvs_connect(FILE **send, FILE **recv);
  */
 void cvs_connection_release(FILE *send, FILE *recv);
 
+/* release the connection but don't ever try to cache it.  You want to
+ * call this in case you stumbled over an error you don't know how to
+ * recover from automatically or simple got EOF
+ */
+#define cvs_connection_kill(send, recv) \
+  do { fclose(send); fclose(recv); } while(0)
+
 /* read one line from cvs server and make sure, it's an ok message. else
  * call cvs_treat_error. return 0 on 'ok'.
  */

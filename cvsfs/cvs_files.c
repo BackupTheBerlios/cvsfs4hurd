@@ -170,7 +170,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
     }
 
   /* well, got EOF, that shouldn't ever happen ... */
-  cvs_connection_release(send, recv);
+  cvs_connection_kill(send, recv);
   free(content);
   return EIO;
 }

@@ -117,7 +117,7 @@ cvs_tree_read(struct netnode **rootdir)
 
 	  if(! cwd)
 	    {
-	      cvs_connection_release(send, recv);
+	      cvs_connection_kill(send, recv);
 	      return ENOMEM;
 	    }
 	  
@@ -163,7 +163,7 @@ cvs_tree_read(struct netnode **rootdir)
 	    if(! entry)
 	      {
 		perror(PACKAGE);
-		cvs_connection_release(send, recv);
+		cvs_connection_kill(send, recv);
 		return ENOMEM; /* pray for cvsfs to survive! */
 	      }
 
@@ -186,7 +186,7 @@ cvs_tree_read(struct netnode **rootdir)
 		free(entry->name);
 		free(entry);
 
-		cvs_connection_release(send, recv);
+		cvs_connection_kill(send, recv);
 		return ENOMEM; /* pray for cvsfs to survive! */
 	      }
 
@@ -206,7 +206,7 @@ cvs_tree_read(struct netnode **rootdir)
 	}
     }
 
-  cvs_connection_release(send, recv);
+  cvs_connection_kill(send, recv);
   return EIO;
 }
 
