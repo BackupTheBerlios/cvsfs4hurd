@@ -1,5 +1,5 @@
 \input texinfo @c -*- texinfo -*- 
-@c $Id: cvsfs.texi,v 1.3 2004/10/09 11:27:57 stesie Exp $
+@c $Id: cvsfs.texi,v 1.4 2004/10/09 11:42:45 stesie Exp $
 @c %**start of header
 @setfilename cvsfs.info
 @include version.texi
@@ -53,6 +53,7 @@ virtual filesystem translator.
 * Authentication::              Using username/password to log in.
 * Remote Shell Connections::    Using rsh or ssh to connect to the cvs host.
 * File Status Information::     File's status and access permissions.
+* Write Support::               On writing to cvsfs mounted modules.
 * Copying This Manual::
 * Index::
 @end menu
@@ -337,6 +338,36 @@ virtually included CVS module you need to omit using
 On the whole you should get used to using @option{--nostats} as you
 probably want to just read through one or two files; opposed to using
 @sc{cvsfs} to serve files to compile a source package.
+
+@c ---------------------------------------------------------------------------
+@node Write Support
+@chapter Write Support
+@cindex Write Support
+
+@sc{cvsfs} by definition is to be a tool, allowing you to hit and view
+a few files out of a huge, nested cvs controlled directory tree.  It
+is not the intention to write another @code{cvs} client, allowing to
+check files in.
+
+@cindex commit
+Actually the question is, is there a clever way to allow easier
+check-in than the way common cvs does?  The filesystem related
+approach would be to supply a @code{/commit} file somewhere, where you
+need to supply your log-message to.  But that seems to be even
+clumpsier than the common @code{ci} command of cvs.
+
+@cindex unionfs
+@cindex shadowfs
+One thing that might be worth considering is to allow creating
+temporary files in the mapped CVS module, thus allowing to ./configure
+and compile within such a directory.  However I suppose using
+@code{unionfs}, @code{shadowfs} or something similar would make
+more sense.  The only
+problem with this is, that @code{unionfs} does not seem to be far
+enough to do that job now.
+
+You might want to consider, that most packages can be configured
+outside the source directory.  For example @sc{cvsfs} is able to do so.
 
 @c ---------------------------------------------------------------------------
 @node Copying This Manual
