@@ -374,6 +374,9 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  }
     }
 
+  if(! err)
+    fshelp_touch(&(*node)->nn_stat, TOUCH_ATIME, cvsfs_maptime);
+
   mutex_unlock(&dir->lock);
 
   if(err)
