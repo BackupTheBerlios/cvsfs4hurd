@@ -41,52 +41,51 @@ static char *cvs_pserver_fetch_pw(cvsfs_config *config);
  * connect to the cvs pserver as further described in the cvsfs_config
  * configuration structure
  */
-FILE *
-cvs_pserver_connect(cvsfs_config *config)
+error_t
+cvs_pserver_connect(FILE **send, FILE **recv)
 {
   char buf[128]; /* we only need to read something like I LOVE YOU
 		  * or some kind of error message (E,M)
 		  */
-  FILE *cvs_handle = tcpip_connect(config->cvs_hostname, config->cvs_port);
+  *send = *recv = tcpip_connect(config.cvs_hostname, config.cvs_port);
 
-  if(! cvs_handle) 
+  if(! *send) 
     /* tcpip connection couldn't be brought up, tcpip_connect spit out a 
      * logmessage itself ...
      */ 
-    return NULL; 
+    return ENOENT; 
 
-  if(! config->cvs_password)
-    config->cvs_password = cvs_pserver_fetch_pw(config);
+  if(! config.cvs_password)
+    config.cvs_password = cvs_pserver_fetch_pw(&config);
 
   /* okay, now let's talk a little pserver dialect to log in ... */
-  fprintf(cvs_handle, "BEGIN AUTH REQUEST\n");
-  fprintf(cvs_handle, "%s\n%s\n%s\n", 
-	  config->cvs_root,
-	  config->cvs_username,
-	  config->cvs_password);
-  fprintf(cvs_handle, "END AUTH REQUEST\n");
+  fprintf(*send, "BEGIN AUTH REQUEST\n");
+  fprintf(*send, "%s\n%s\n%s\n", 
+	  config.cvs_root,
+	  config.cvs_username,
+	  config.cvs_password);
+  fprintf(*send, "END AUTH REQUEST\n");
 
   /* okay, now watch out for the server's answer,
    * in the hope, that it loves us
    */
-  if(! fgets(buf, sizeof(buf), cvs_handle))
+  if(! fgets(buf, sizeof(buf), *recv))
     {
       perror(PACKAGE);
-      fclose(cvs_handle);
-      return NULL;
+      fclose(*send);
+      fclose(*recv);
+      return EIO;
     }
 
   if(strncmp(buf, "I LOVE YOU", 10))
     {
-      cvs_treat_error(cvs_handle, buf);
-      fclose(cvs_handle);
-      return NULL;
+      cvs_treat_error(*recv, buf);
+      fclose(*send);
+      fclose(*recv);
+      return EPERM;
     }
 
-  /* the result of our login request is handled in cvs_connect()
-   * since this is equal to all supported protocols
-   */
-  return cvs_handle;
+  return 0;
 }
 
 

@@ -24,18 +24,22 @@
 #include "cvsfs.h"
 #include "cvs_connect.h"
 #include "cvs_pserver.h"
+#include "cvs_ext.h"
 
 #define PACKAGE "cvsfs"
 
 /* do cvs handshake, aka tell about valid responses and check whether all
  * necessary requests are supported.
  */
-static int cvs_handshake(FILE *cvs_handle);
+static int cvs_handshake(FILE *send, FILE *recv);
 
 /* try to keep one connection to the cvs host open, FILE* handle of our
  * connection + rwlock, which must be held, when modifying 
  */
-static FILE *cvs_cached_conn = NULL;
+static struct {
+  FILE *send;
+  FILE *recv;
+} cvs_cached_conn = { NULL, NULL };
 spin_lock_t cvs_cached_conn_lock;
 time_t cvs_cached_conn_release_time = 0;
 
@@ -58,63 +62,78 @@ cvs_connect_init(void)
 
 /* cvs_connect
  *
- * Try connecting to the cvs host specified in 'config'. Return a
- * line-buffer libc FILE* handle on success, NULL if something failed.
+ * Try connecting to the cvs host. Return 0 on success. 
+ * FILE* handles to send and receive are guaranteed to be valid only, if zero
+ * status was returned. The handles are line-buffered.
  */
-FILE *
-cvs_connect(cvsfs_config *config)
+error_t
+cvs_connect(FILE **send, FILE **recv)
 {
-  FILE *cvs_handle = NULL;
+  error_t err = 0;
 
   /* look whether we've got a cached connection available */
   spin_lock(&cvs_cached_conn_lock);
-  if((cvs_handle = cvs_cached_conn))
-    cvs_cached_conn = NULL;
+
+  if((*send = cvs_cached_conn.send) && (*recv = cvs_cached_conn.recv))
+    {
+      cvs_cached_conn.send = NULL;
+      cvs_cached_conn.recv = NULL;
+
+      spin_unlock(&cvs_cached_conn_lock);
+      return 0;
+    }
+
   spin_unlock(&cvs_cached_conn_lock);
 
-  if(cvs_handle)
-    return cvs_handle; /* cached connection was available */
-
-  switch(config->cvs_mode)
+  switch(config.cvs_mode)
     {
     case PSERVER:
-      cvs_handle = cvs_pserver_connect(config);
+      err = cvs_pserver_connect(send, recv);
+      break;
+
+    case EXT:
+      err = cvs_ext_connect(send, recv);
       break;
     }
 
-  if(! cvs_handle)
-    return NULL; /* something went wrong, we already logged, what did */
+  if(err)
+    return err; /* something went wrong, we already logged, what did */
 
   /* still looks good. inform server of our cvs root */
-  fprintf(cvs_handle, "Root %s\n", config->cvs_root);
+  fprintf(*send, "Root %s\n", config.cvs_root);
 
-  if(cvs_handshake(cvs_handle))
+  if(cvs_handshake(*send, *recv))
     {
-      fclose(cvs_handle);
-      return NULL;
+      fclose(*send);
+      fclose(*recv);
+      return EIO;
     }
 
-  return cvs_handle;
+  return 0;
 }
 
 
 /* cvs_connection_release
  *
- * release the connection cvs_handle.  the connection may then either be cached
+ * release the connection.  the connection may then either be cached
  * and reused on next cvs_connect() or may be closed.
  */
 void
-cvs_connection_release(FILE *cvs_handle)
+cvs_connection_release(FILE *send, FILE *recv)
 {
   spin_lock(&cvs_cached_conn_lock);
 
-  if(cvs_cached_conn)
-    /* there's already a cached connection, forget about ours */
-    fclose(cvs_handle);
-
+  if(cvs_cached_conn.send)
+    {
+      /* there's already a cached connection, forget about ours */
+      fclose(send);
+      fclose(recv);
+    }
   else
     {
-      cvs_cached_conn = cvs_handle;
+      cvs_cached_conn.send = send;
+      cvs_cached_conn.recv = recv;
+
       cvs_cached_conn_release_time = time(NULL);
     }
 
@@ -128,11 +147,11 @@ cvs_connection_release(FILE *cvs_handle)
  * necessary requests are supported.
  */
 static int
-cvs_handshake(FILE *cvs_handle)
+cvs_handshake(FILE *send, FILE *recv)
 {
   char buf[4096]; /* Valid-requests answer can be really long ... */
 
-  fprintf(cvs_handle, "Valid-responses "
+  fprintf(send, "Valid-responses "
 	  /* base set of responses, we need to understand those ... */
 	  "ok error Valid-requests M E "
 
@@ -142,9 +161,9 @@ cvs_handshake(FILE *cvs_handle)
 	   */
 	  "Checked-in Updated Merged Removed"
 	  "\n");
-  fprintf(cvs_handle, "valid-requests\n");
+  fprintf(send, "valid-requests\n");
 
-  if(! fgets(buf, sizeof(buf), cvs_handle))
+  if(! fgets(buf, sizeof(buf), recv))
     {
       perror(PACKAGE);
       return 1; /* connection gets closed by caller! */
@@ -156,11 +175,11 @@ cvs_handshake(FILE *cvs_handle)
 
   if(strncmp(buf, "Valid-requests ", 15))
     {
-      cvs_treat_error(cvs_handle, buf);
+      cvs_treat_error(recv, buf);
       return 1; /* connection will be closed by our caller */
     }
 
-  return cvs_wait_ok(cvs_handle);
+  return cvs_wait_ok(recv);
 }
 
 
@@ -236,12 +255,17 @@ static void
 cvs_connect_sigalrm_handler(int signal) 
 {
   spin_lock(&cvs_cached_conn_lock);
-  if(cvs_cached_conn
+
+  if(cvs_cached_conn.send
      && (time(NULL) - cvs_cached_conn_release_time > 90))
     {
       /* okay, connection is rather old, drop it ... */
-      fclose(cvs_cached_conn);
-      cvs_cached_conn = NULL;
+      fclose(cvs_cached_conn.send);
+      cvs_cached_conn.send = NULL;
+
+      fclose(cvs_cached_conn.recv);
+      cvs_cached_conn.recv = NULL;
     }
+
   spin_unlock(&cvs_cached_conn_lock);
 }

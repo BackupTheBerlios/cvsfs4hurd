@@ -35,8 +35,9 @@ volatile unsigned int next_fileno = 1;
  * RETURN: pointer to the root directory, NULL on error
  */
 struct netnode *
-cvs_tree_read(FILE *cvs_handle, const char *root_dir)
+cvs_tree_read(const char *root_dir)
 {
+  FILE *send, *recv;
   struct netnode *rootdir = NULL;
   struct netnode *cwd = (void *) 0xDEADBEEF;
   char *ptr;
@@ -44,7 +45,10 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 		   * cvsfs tell's you to increase this value, please do so.
 		   */
 
-  fprintf(cvs_handle, 
+  if(cvs_connect(&send, &recv))
+    return NULL;
+
+  fprintf(send, 
 	  "UseUnchanged\n"
 	  "Argument -s\n" /* we don't want to download the file's contents */
 	  "Argument -r\nArgument 0\n"
@@ -60,7 +64,7 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
    * E cvs rdiff: cannot find module <module> - ignored
    * error
    */
-  while(fgets(buf, sizeof(buf), cvs_handle))
+  while(fgets(buf, sizeof(buf), recv))
     {
       ptr = buf + strlen(buf);
       ptr --;
@@ -76,14 +80,21 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
       *ptr = 0;
 
       if(! strncmp(buf, "ok", 2))
-	return rootdir;
+	{
+	  cvs_connection_release(send, recv);
+	  return rootdir;
+	}
 
       if(! strncmp(buf, "error", 5))
-	return NULL; /* TODO free rootdir structure, if not empty */
+	{
+	  cvs_connection_release(send, recv);
+	  return NULL; /* TODO free rootdir structure, if not empty */
+	}
 
       if(buf[1] != ' ') 
 	{
-	  cvs_treat_error(cvs_handle, buf);
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
 	  return NULL; /* TODO free rootdir structure */
 	}
 
@@ -92,7 +103,8 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	case 'E': /* E cvs rdiff: Diffing <directory> */
 	  if(! (ptr = strstr(buf, "Diffing ")))
 	    {
-	      cvs_treat_error(cvs_handle, buf);
+	      cvs_treat_error(recv, buf);
+	      cvs_connection_release(send, recv);
 	      return NULL; /* TODO free rootdir */
 	    }
 
@@ -103,14 +115,18 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	    cwd = cvs_tree_enqueue(rootdir, ptr);
 
 	  if(! cwd)
-	    return NULL; /* TODO free allocated memory */
+	    {
+	      cvs_connection_release(send, recv);
+	      return NULL; /* TODO free allocated memory */
+	    }
 	  
 	  break;
 
 	case 'M': /* M File <file> is new; HEAD revision <revision> */
 	  if(! (ptr = strstr(buf, "File ")))
 	    {
-	      cvs_treat_error(cvs_handle, buf);
+	      cvs_treat_error(recv, buf);
+	      cvs_connection_release(send, recv);
 	      return NULL; /* TODO free rootdir */
 	    }
 	  
@@ -121,7 +137,8 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 
 	    if(! (ptr = strstr(filename, " is new")))
 	      {
-		cvs_treat_error(cvs_handle, buf);
+		cvs_treat_error(recv, buf);
+		cvs_connection_release(send, recv);
 		return NULL; /* TODO clear rootdir struct */
 	      }
 	    *(ptr ++) = 0;
@@ -134,7 +151,8 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 
 	    if(! (ptr = strstr(revision, "revision ")))
 	      {
-		cvs_treat_error(cvs_handle, NULL);
+		cvs_treat_error(recv, NULL);
+		cvs_connection_release(send, recv);
 		return NULL; /* TODO care for malloced memory */
 	      }
 	  
@@ -144,6 +162,7 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	    if(! entry)
 	      {
 		perror(PACKAGE);
+		cvs_connection_release(send, recv);
 		return NULL; /* pray for cvsfs to survive! */
 	      }
 
@@ -166,6 +185,7 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 		free(entry->name);
 		free(entry);
 
+		cvs_connection_release(send, recv);
 		return NULL; /* pray for cvsfs to survive! */
 	      }
 
@@ -179,13 +199,15 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	  }
 
 	default:
-	  cvs_treat_error(cvs_handle, buf);
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
 	  return NULL; /* TODO this probably never happens, but care
 			* for allocated memory anyways
 			*/
 	}
     }
 
+  cvs_connection_release(send, recv);
   return NULL; /* got eof, this shouldn't happen. 
 		* free allocated memory anyway. */
 }

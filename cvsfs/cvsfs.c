@@ -73,6 +73,7 @@ enum
     OPT_PORT = 'p',
     OPT_USER = 'u',
     OPT_HOMEDIR = 'h',
+    OPT_REMOTE = 'r',
   };
 
 static const struct argp_option cvsfs_options[] =
@@ -83,6 +84,9 @@ static const struct argp_option cvsfs_options[] =
       "username to supply to cvs host, when logging in", 0 },
     { "homedir", OPT_HOMEDIR, "PATH", 0,
       "path of your home directory (= path to .cvspass file)", 0 },
+    { "remote", OPT_REMOTE, "CLIENT", OPTION_ARG_OPTIONAL,
+      "connect through :ext: remote shell client CLIENT to cvs host", 0 },
+
     /* terminate list */
     { NULL, 0, NULL, 0, NULL, 0 }
   };
@@ -95,7 +99,6 @@ main(int argc, char **argv)
   struct netnode *rootdir;
   io_statbuf_t ul_stat;
   mach_port_t bootstrap, ul_node;
-  FILE *handle;
   struct argp argp =
     {
       cvsfs_options, parse_cvsfs_opt, 
@@ -123,23 +126,12 @@ main(int argc, char **argv)
   task_get_bootstrap_port(mach_task_self(), &bootstrap);
   netfs_init();
 
-  /* okay, now try connecting our cvs server for the very first time */
-  handle = cvs_connect(&config);
-  if(! handle)
-    {
-      fprintf(stderr, PACKAGE ": cannot establish connection to '%s'.\n",
-	      config.cvs_hostname);
-      return 1;
-    }
-
-  if(! (rootdir = cvs_tree_read(handle, config.cvs_module)))
+  /* download initial root directory */
+  if(! (rootdir = cvs_tree_read(config.cvs_module)))
     {
       fprintf(stderr, PACKAGE ": unable to get initial cvs tree, stop.\n");
       return 1;
     }
-
-  /* release, aka cache our connection */
-  cvs_connection_release(handle);
 
   /* map time */
   if(maptime_map(0, 0, &cvsfs_maptime))
@@ -198,6 +190,20 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
 
     case OPT_HOMEDIR:
       config.homedir = strdup(arg);
+      break;
+
+    case OPT_REMOTE:
+      config.cvs_mode = EXT;
+      if(arg)
+	config.cvs_shell_client = strdup(arg);
+      else
+	{
+	  const char *rsh = getenv("CVS_RSH");
+	  if(rsh)
+	    config.cvs_shell_client = strdup(arg);
+	  else
+	    config.cvs_shell_client = "rsh";
+	}
       break;
 
     case ARGP_KEY_ARGS:

@@ -31,8 +31,9 @@
  * Download the revision (as specified by rev) of the specified file. 
  */
 int
-cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
+cvs_files_cache(struct netnode *file, struct revision *rev)
 {
+  FILE *send, *recv;
   char *content = NULL;
   unsigned int content_len = 0;
   unsigned int content_alloc = 0;
@@ -46,8 +47,11 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
 		   * a goodthing(TM) ...
 		   */
 
+  if(cvs_connect(&send, &recv))
+    return EIO;
+
   /* write out request header */
-  fprintf(cvs_handle,
+  fprintf(send,
 	  "UseUnchanged\n"
 	  "Argument -r\nArgument 0\n"
 	  "Argument -r\nArgument %s\n"
@@ -64,18 +68,18 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
       fprintf(cvs_handle, "%s/", dir->name);
     }
 
-  cvs_files_print_path_recursively(cvs_handle, file->parent);
+  cvs_files_print_path_recursively(send, file->parent);
 
   /* last but not least write out the filename */
-  fprintf(cvs_handle, "%s\n", file->name);
+  fprintf(send, "%s\n", file->name);
 
   /* we need an rdiff ... */
-  fprintf(cvs_handle, "rdiff\n");
+  fprintf(send, "rdiff\n");
 
   /* okay, now read the server's response, which either is a diff, having
    * a "M" char in front of each line, or an E, error couple.
    */
-  while(fgets(buf, sizeof(buf), cvs_handle))
+  while(fgets(buf, sizeof(buf), recv))
     {
       char *ptr;
       int buflen = strlen(buf);
@@ -96,27 +100,38 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
       if(! strncmp(buf, "ok", 2))
 	{
 	  if(! got_something)
-	    return -1; /* no content, sorry. */
+	    {
+	      cvs_connection_release(send, recv);
+	      return -1; /* no content, sorry. */
+	    }
 
 	  content = realloc(content, content_len + 1);
 
 	  if(! content)
-	    return ENOMEM;
+	    {
+	      cvs_connection_release(send, recv);
+	      return ENOMEM;
+	    }
 
 	  content[content_len] = 0; /* zero terminate */
 	  rev->contents = content;
 	  
+	  cvs_connection_release(send, recv);
 	  return 0; /* jippie, looks perfectly, he? */
 	}
 
       if(! strncmp(buf, "error", 5))
-	return -1; /* wicked, get outta here anyhow ... 
-		    * TODO care for memory, that might got allocated already
-		    */
+	{
+	  cvs_connection_release(send, recv);
+	  return -1; /* wicked, get outta here anyhow ... 
+		      * TODO care for memory, that might got allocated already
+		      */
+	}
 
       if(buf[1] != ' ') 
 	{
-	  cvs_treat_error(cvs_handle, buf);
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
 	  return -1; /* hm, doesn't look got for us
 		      * anyhow, we need to care for allocated memory here! TODO
 		      */
@@ -127,7 +142,8 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
 	case 'E': /* we expect a patch, padded by M's, this is not what
 		   * we want to have, keep on complaining 
 		   */
-	  cvs_treat_error(cvs_handle, buf);
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
 	  return -1; /* TODO free memory */
 
 	case 'M':
@@ -152,13 +168,15 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
 	  break;
 	  
 	default:
-	  cvs_treat_error(cvs_handle, buf);
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
 	  return -1; /* TODO this probably never happens, but care
 		      * for allocated memory anyways
 		      */
 	}
     }
   
+  cvs_connection_release(send, recv);
   return -1; /* got eof, this shouldn't happen. 
-		* free allocated memory anyway. */      
+	      * free allocated memory anyway. */      
 }

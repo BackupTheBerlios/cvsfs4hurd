@@ -22,7 +22,8 @@ extern volatile struct mapped_time_value *cvsfs_maptime;
 
 
 typedef struct {
-  enum { PSERVER } cvs_mode;
+  enum { PSERVER, EXT } cvs_mode;
+  char *cvs_shell_client; /* program to use for :ext: connection */
 
   char *cvs_hostname;
   int cvs_port; /* port no. in localhost's endianess */

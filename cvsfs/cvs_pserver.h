@@ -17,9 +17,7 @@
 #include <stdio.h>
 #include "cvsfs.h"
 
-/* connect to the cvs pserver as further described in the cvsfs_config
- * configuration structure
- */
-FILE *cvs_pserver_connect(cvsfs_config *config);
+/* connect to the cvs pserver */
+error_t cvs_pserver_connect(FILE **send, FILE **recv);
 
 #endif /* CVS_PSERVER_H */

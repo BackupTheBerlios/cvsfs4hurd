@@ -19,6 +19,6 @@
 /* read the whole file and directory tree of the specified module (root_dir).
  * RETURN: pointer to the root directory, NULL on error
  */
-struct netnode *cvs_tree_read(FILE *cvs_handle, const char *root_dir);
+struct netnode *cvs_tree_read(const char *root_dir);
 
 #endif /* CVS_TREE_H */

@@ -295,14 +295,12 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  /* okay, we don't have this particular revision available;
 	   * create a new revision structure and try retrieving it
 	   */
-	  FILE *cvs_handle = cvs_connect(&config);
-
 	  rev->id = strdup(name);
 	  rev->contents = NULL;
 	  rev->next = NULL;
 	  rwlock_init(&rev->lock);
 
-	  if(cvs_files_cache(cvs_handle, nn, rev))
+	  if(cvs_files_cache(nn, rev))
 	    {
 	      /* unable to download wanted revision. */
 	      free(rev->id);
@@ -319,8 +317,6 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 
 	      rwlock_writer_unlock(&nn->lock);
 	    }
-
-	  cvs_connection_release(cvs_handle);
 	}
 
       if(rev)
@@ -490,24 +486,19 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
        * TODO: consider whether it's possible (if using non-blocking I/O)
        * to fork a retrieval task, and return 0 bytes for the time being ..
        */
-      FILE *cvs_handle = cvs_connect(&config);
 
       /* oops, we need a writer lock ... */
       rwlock_reader_unlock(&node->nn->revision->lock);
       rwlock_writer_lock(&node->nn->revision->lock);
 
-      if(cvs_files_cache(cvs_handle,
-			 node->nn->parent ? node->nn : node->nn->child,
+      if(cvs_files_cache(node->nn->parent ? node->nn : node->nn->child,
 			 node->nn->revision))
 	{
-	  cvs_connection_release(cvs_handle);
 	  rwlock_writer_unlock(&node->nn->revision->lock);
 	  rwlock_reader_unlock(&node->nn->lock);
 	  *len = 0;
 	  return EIO;
 	}
-
-      cvs_connection_release(cvs_handle);
 
       /* TODO consider whether there's a nicer way, so that we don't have
        * to relock two times 
