@@ -45,8 +45,8 @@ cvs_pserver_connect(FILE **send, FILE **recv)
   char buf[128]; /* we only need to read something like I LOVE YOU
 		  * or some kind of error message (E,M)
 		  */
-  *send = *recv = tcpip_connect(config.cvs_hostname,
-				config.cvs_port ? config.cvs_port : 2401);
+  if(! config.cvs_port) config.cvs_port = 2401;
+  *send = *recv = tcpip_connect(config.cvs_hostname, config.cvs_port);
 
   if(! *send) 
     /* tcpip connection couldn't be brought up, tcpip_connect spit out a 
