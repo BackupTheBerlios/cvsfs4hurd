@@ -252,6 +252,7 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
        * our cwd 'dir'
        */
       netfs_nref(dir);
+
       *node = dir;
       err = 0;
     }
@@ -329,23 +330,20 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  {
 	    err = 0; /* hey, we got it! */
 
-	    rwlock_reader_lock(&nn->lock);
+	    spin_lock(&netfs_node_refcnt_lock);
+	    /* rwlock_reader_lock(&nn->lock);
+	     * we don't have to lock nn->lock since it's ref cannot become
+	     * invalid as we hold netfs_node_refcnt_lock
+	     */
 
-	    if(nn->node)
-	      {
-		*node = nn->node;
-		netfs_nref(nn->node);
-		rwlock_reader_unlock(&nn->lock);
-	      }
-	    else
-	      {
-		/* unlock netnode, since cvsfs_make_node needs a lock
-		 * to allow write access 
-		 */
-		rwlock_reader_unlock(&nn->lock);
+	    if((*node = nn->node))
+	      (*node)->references ++;
 
-		*node = cvsfs_make_node(nn);
-	      }
+	    spin_unlock(&netfs_node_refcnt_lock);
+	    /* rwlock_reader_unlock(&nn->lock); */
+
+	    if(! *node)
+	      *node = cvsfs_make_node(nn);
 
 	    break;
 	  }
@@ -355,6 +353,8 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 
   if(err)
     *node = NULL;
+  else
+    mutex_lock(&(*node)->lock);
 
   return err;
 }
