@@ -1,5 +1,5 @@
 \input texinfo @c -*- texinfo -*- 
-@c $Id: cvsfs.texi,v 1.2 2004/10/09 09:52:20 stesie Exp $
+@c $Id: cvsfs.texi,v 1.3 2004/10/09 11:27:57 stesie Exp $
 @c %**start of header
 @setfilename cvsfs.info
 @include version.texi
@@ -136,6 +136,16 @@ to some obscure target?
 
 I think it would not make things easier compared to the common
 @code{cvs ci}?
+
+@item @sc{cvsfs} is not a replacement for @code{cvs}.
+
+Even though it might look to you as such, but it should not.  There
+are quite huge differencies between @sc{cvsfs} and common cvs.
+@sc{cvsfs} aims to be a little tool, allowing to hit and view just a few files
+out of a nested cvs directory tree.  However cvs is thought to check things
+out in order to edit or compile them, i.e. allowing to write,
+etc.  That said, it might look more reasonable to compare it with viewcvs
+or similar packages, however these allow to view files over the web only.
 
 @end table
 
