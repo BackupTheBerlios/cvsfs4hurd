@@ -39,6 +39,8 @@
 error_t
 netfs_validate_stat (struct node *node, struct iouser *cred)
 {
+  (void) cred;
+
   FUNC_PROLOGUE_NODE("netfs_validate_stat", node);
 
   if(! config.nostats
@@ -76,6 +78,9 @@ netfs_validate_stat (struct node *node, struct iouser *cred)
 error_t netfs_attempt_readlink (struct iouser *user, struct node *node,
 				char *buf)
 {
+  (void) user;
+  (void) buf;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_readlink", node);
 
   /* actually we don't have no symlinks in cvsfs, at least not for
@@ -94,6 +99,9 @@ error_t
 netfs_attempt_create_file (struct iouser *user, struct node *dir,
 			   char *name, mode_t mode, struct node **node)
 {
+  (void) user;
+  (void) mode;
+
   FUNC_PROLOGUE_FMT("netfs_attempt_create_file", "name=%s", name);
 
   *node = 0;
@@ -109,6 +117,10 @@ netfs_attempt_create_file (struct iouser *user, struct node *dir,
 error_t netfs_attempt_chown (struct iouser *cred, struct node *node,
 			     uid_t uid, uid_t gid)
 {
+  (void) cred;
+  (void) uid;
+  (void) gid;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_chown", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -121,6 +133,9 @@ error_t
 netfs_attempt_statfs (struct iouser *cred, struct node *node,
 		      fsys_statfsbuf_t *st)
 {
+  (void) cred;
+  (void) st;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_statfs", node);
   FUNC_EPILOGUE(EOPNOTSUPP);
 }
@@ -132,6 +147,10 @@ netfs_attempt_statfs (struct iouser *cred, struct node *node,
 error_t netfs_attempt_mkdir (struct iouser *user, struct node *dir,
 			     char *name, mode_t mode)
 {
+  (void) user;
+  (void) dir;
+  (void) mode;
+
   FUNC_PROLOGUE_FMT("netfs_attempt_mkdir", "name=%s", name);
   FUNC_EPILOGUE(EROFS);
 }
@@ -143,6 +162,9 @@ error_t netfs_attempt_mkdir (struct iouser *user, struct node *dir,
 error_t netfs_attempt_chflags (struct iouser *cred, struct node *node,
 			       int flags)
 {
+  (void) cred;
+  (void) flags;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_chflags", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -156,6 +178,8 @@ error_t
 netfs_check_open_permissions (struct iouser *user, struct node *node,
 			      int flags, int newnode)
 {
+  (void) newnode;
+
   FUNC_PROLOGUE_NODE("netfs_check_open_permissions", node);
   error_t err = 0;
 
@@ -181,6 +205,9 @@ netfs_check_open_permissions (struct iouser *user, struct node *node,
 error_t netfs_attempt_chmod (struct iouser *cred, struct node *node,
 			     mode_t mode)
 {
+  (void) cred;
+  (void) mode;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_chmod", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -192,9 +219,14 @@ error_t netfs_attempt_chmod (struct iouser *cred, struct node *node,
 error_t netfs_attempt_mkfile (struct iouser *user, struct node *dir,
 			      mode_t mode, struct node **node)
 {
+  (void) user;
+  (void) mode;
+
   FUNC_PROLOGUE("netfs_attempt_mkfile");
+
   *node = 0;
   mutex_unlock (&dir->lock);
+
   FUNC_EPILOGUE(EROFS);
 }
 
@@ -204,6 +236,9 @@ error_t netfs_attempt_mkfile (struct iouser *user, struct node *dir,
    only after sync is completely finished.  */
 error_t netfs_attempt_syncfs (struct iouser *cred, int wait)
 {
+  (void) cred;
+  (void) wait;
+
   FUNC_PROLOGUE("netfs_attempt_syncfs");
 
   /* we don't support writing */
@@ -217,6 +252,9 @@ error_t netfs_attempt_syncfs (struct iouser *cred, int wait)
 error_t
 netfs_attempt_sync (struct iouser *cred, struct node *node, int wait)
 {
+  (void) cred;
+  (void) wait;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_sync", node);
 
   /* we don't support writing to files, therefore syncing isn't really
@@ -231,6 +269,8 @@ netfs_attempt_sync (struct iouser *cred, struct node *node, int wait)
 error_t netfs_attempt_unlink (struct iouser *user, struct node *dir,
 			      char *name)
 {
+  (void) user;
+
   FUNC_PROLOGUE_FMT("netfs_attempt_unlink", "dir=%s, name=%s",
 		    dir->nn->name, name);
   FUNC_EPILOGUE(EROFS);
@@ -243,6 +283,9 @@ error_t netfs_attempt_unlink (struct iouser *user, struct node *dir,
 error_t netfs_attempt_set_size (struct iouser *cred, struct node *node,
 				loff_t size)
 {
+  (void) cred;
+  (void) size;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_set_size", node);
   FUNC_EPILOGUE(EOPNOTSUPP);
 }
@@ -254,6 +297,10 @@ error_t netfs_attempt_set_size (struct iouser *cred, struct node *node,
 error_t netfs_attempt_mkdev (struct iouser *cred, struct node *node,
 			     mode_t type, dev_t indexes)
 {
+  (void) cred;
+  (void) type;
+  (void) indexes;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_mkdev", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -293,6 +340,8 @@ netfs_report_access (struct iouser *cred, struct node *node, int *types)
 error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 			      char *name, struct node **node)
 {
+  (void) user;
+
   FUNC_PROLOGUE_FMT("netfs_attempt_lookup", "dir=%s, name=%s",
 		    dir->nn->name, name);
   error_t err = ENOENT;
@@ -422,6 +471,11 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 error_t netfs_attempt_link (struct iouser *user, struct node *dir,
 			    struct node *file, char *name, int excl)
 {
+  (void) user;
+  (void) dir;
+  (void) name;
+  (void) excl;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_link", file);
   FUNC_EPILOGUE(EROFS);
 }
@@ -432,6 +486,8 @@ error_t netfs_attempt_link (struct iouser *user, struct node *dir,
 error_t netfs_attempt_rmdir (struct iouser *user,
 			     struct node *dir, char *name)
 {
+  (void) user;
+
   FUNC_PROLOGUE_FMT("netfs_attempt_rmdir", "dir=%s, name=%s",
 			  dir->nn->name, name);
   FUNC_EPILOGUE(EROFS);
@@ -444,6 +500,9 @@ error_t netfs_attempt_rmdir (struct iouser *user,
 error_t netfs_attempt_chauthor (struct iouser *cred, struct node *node,
 				uid_t author)
 {
+  (void) cred;
+  (void) author;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_chauthor", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -454,6 +513,9 @@ error_t netfs_attempt_chauthor (struct iouser *cred, struct node *node,
 error_t netfs_attempt_mksymlink (struct iouser *cred, struct node *node,
 				 char *name)
 {
+  (void) cred;
+  (void) name;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_mksymlink", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -465,6 +527,13 @@ error_t netfs_attempt_rename (struct iouser *user, struct node *fromdir,
 			      char *fromname, struct node *todir,
 			      char *toname, int excl)
 {
+  (void) user;
+  (void) fromdir;
+  (void) fromname;
+  (void) todir;
+  (void) toname;
+  (void) excl;
+
   FUNC_PROLOGUE("netfs_attempt_rename");
   FUNC_EPILOGUE(EROFS);
 }
@@ -477,6 +546,11 @@ error_t netfs_attempt_rename (struct iouser *user, struct node *fromdir,
 error_t netfs_attempt_write (struct iouser *cred, struct node *node,
 			     loff_t offset, size_t *len, void *data)
 {
+  (void) cred;
+  (void) offset;
+  (void) len;
+  (void) data;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_write", node);
   FUNC_EPILOGUE(EROFS);
 }
@@ -489,6 +563,8 @@ error_t
 netfs_attempt_utimes (struct iouser *cred, struct node *node,
 		      struct timespec *atime, struct timespec *mtime)
 {
+  (void) cred;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_utimes", node);
   error_t err = fshelp_isowner (&node->nn_stat, cred);
   int flags = TOUCH_CTIME;
@@ -525,6 +601,8 @@ netfs_attempt_utimes (struct iouser *cred, struct node *node,
 error_t netfs_attempt_read (struct iouser *cred, struct node *node,
 			    loff_t offset, size_t *len, void *data)
 {
+  (void) cred;
+
   FUNC_PROLOGUE_NODE("netfs_attempt_read", node);
   int maxlen;
 
@@ -607,6 +685,9 @@ netfs_get_dirents (struct iouser *cred, struct node *dir,
 		   mach_msg_type_number_t *data_len,
 		   vm_size_t max_data_len, int *data_entries)
 {
+  (void) cred;
+  (void) max_data_len;
+
   FUNC_PROLOGUE_NODE("netfs_get_dirents", dir);
   error_t err = 0;
   int count = 0;
