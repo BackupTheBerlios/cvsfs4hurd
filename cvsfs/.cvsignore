@@ -21,3 +21,14 @@ Makefile
 stamp-vti
 version.texi
 cvsfs4hurd-0.1.tar.gz
+cvsfs.aux
+cvsfs.cp
+cvsfs.cps
+cvsfs.dvi
+cvsfs.fn
+cvsfs.ky
+cvsfs.log
+cvsfs.pg
+cvsfs.toc
+cvsfs.tp
+cvsfs.vr
