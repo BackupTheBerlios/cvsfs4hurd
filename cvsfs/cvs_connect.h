@@ -22,6 +22,11 @@
  */
 FILE *cvs_connect(cvsfs_config *config);
 
+/* release the connection cvs_handle.  the connection may then either be cached
+ * and reused on next cvs_connect() or may be closed.
+ */
+void cvs_connection_release(FILE *cvs_handle);
+
 /* read one line from cvs server and make sure, it's an ok message. else
  * call cvs_treat_error. return 0 on 'ok'.
  */

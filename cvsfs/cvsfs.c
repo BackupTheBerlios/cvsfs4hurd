@@ -91,6 +91,8 @@ static const struct argp_option cvsfs_options[] =
 
 volatile struct mapped_time_value *cvsfs_maptime;
 
+/* rwlock from cvs_connect.c we've got to initialize */
+extern spin_lock_t cvs_cached_conn_lock;
 
 int
 main(int argc, char **argv)
@@ -105,6 +107,9 @@ main(int argc, char **argv)
       args_doc, doc, argp_children, 
       NULL, NULL
     };
+
+  /* first things first: initialize global locks we use */
+  spin_lock_init(&cvs_cached_conn_lock);
 
   /* stderr = fopen("cvsfs.log", "w");
    * setvbuf(stderr, NULL, _IONBF, 0);
@@ -133,17 +138,14 @@ main(int argc, char **argv)
       return 1;
     }
 
-  /* TODO don't keep the cvs_handle in the config structure, since we
-   * should expire the link to the cvs host if it's not used and set
-   * up a new one, if necessary
-   */
-  config.cvs_handle = handle;
-
   if(! (rootdir = cvs_tree_read(handle, config.cvs_module)))
     {
       fprintf(stderr, PACKAGE ": unable to get initial cvs tree, stop.\n");
       return 1;
     }
+
+  /* release, aka cache our connection */
+  cvs_connection_release(handle);
 
   /* map time */
   if(maptime_map(0, 0, &cvsfs_maptime))

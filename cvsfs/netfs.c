@@ -34,6 +34,7 @@
 #include "cvsfs.h"
 #include "cvs_files.h"
 #include "node.h"
+#include "cvs_connect.h"
 
 
 
@@ -286,11 +287,13 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  /* okay, we don't have this particular revision available;
 	   * create a new revision structure and try retrieving it
 	   */
+	  FILE *cvs_handle = cvs_connect(&config);
+
 	  rev->id = strdup(name);
 	  rev->contents = NULL;
 	  rev->next = NULL;
 
-	  if(cvs_files_cache(config.cvs_handle, nn, rev))
+	  if(cvs_files_cache(cvs_handle, nn, rev))
 	    {
 	      /* unable to download wanted revision. */
 	      free(rev->id);
@@ -303,6 +306,8 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	      rev->next = nn->revision->next;
 	      nn->revision->next = rev;
 	    }
+
+	  cvs_connection_release(cvs_handle);
 	}
 
       if(rev)
@@ -459,13 +464,18 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
        * TODO: consider whether it's possible (if using non-blocking I/O)
        * to fork a retrieval task, and return 0 bytes for the time being ..
        */
-      if(cvs_files_cache(config.cvs_handle,
+      FILE *cvs_handle = cvs_connect(&config);
+
+      if(cvs_files_cache(cvs_handle,
 			 node->nn->parent ? node->nn : node->nn->child,
 			 node->nn->revision))
 	{
+	  cvs_connection_release(cvs_handle);
 	  *len = 0;
 	  return EIO;
 	}
+
+      cvs_connection_release(cvs_handle);
     }
 
   maxlen = strlen(node->nn->revision->contents);

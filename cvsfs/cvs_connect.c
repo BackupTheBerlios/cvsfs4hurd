@@ -16,6 +16,7 @@
 #endif
 
 #include <string.h>
+#include <spin-lock.h>
 
 #include "cvsfs.h"
 #include "cvs_connect.h"
@@ -23,7 +24,16 @@
 
 #define PACKAGE "cvsfs"
 
+/* do cvs handshake, aka tell about valid responses and check whether all
+ * necessary requests are supported.
+ */
 static int cvs_handshake(FILE *cvs_handle);
+
+/* try to keep one connection to the cvs host open, FILE* handle of our
+ * connection + rwlock, which must be held, when modifying 
+ */
+static FILE *cvs_cached_conn = NULL;
+spin_lock_t cvs_cached_conn_lock;
 
 /* cvs_connect
  *
@@ -33,10 +43,20 @@ static int cvs_handshake(FILE *cvs_handle);
 FILE *
 cvs_connect(cvsfs_config *config)
 {
-  FILE *cvs_handle;
+  FILE *cvs_handle = NULL;
   char buf[128]; /* we only need to read something like I LOVE YOU
 		  * or some kind of error message (E,M)
 		  */
+
+  /* look whether we've got a cached connection available */
+  spin_lock(&cvs_cached_conn_lock);
+  if((cvs_handle = cvs_cached_conn))
+    cvs_cached_conn = NULL;
+  spin_unlock(&cvs_cached_conn_lock);
+
+  if(cvs_handle)
+    return cvs_handle; /* cached connection was available */
+
   switch(config->cvs_mode)
     {
     case PSERVER:
@@ -75,6 +95,28 @@ cvs_connect(cvsfs_config *config)
 
   return cvs_handle;
 }
+
+
+/* cvs_connection_release
+ *
+ * release the connection cvs_handle.  the connection may then either be cached
+ * and reused on next cvs_connect() or may be closed.
+ */
+void
+cvs_connection_release(FILE *cvs_handle)
+{
+  spin_lock(&cvs_cached_conn_lock);
+
+  if(cvs_cached_conn)
+    /* there's already a cached connection, forget about ours */
+    fclose(cvs_handle);
+
+  else
+    cvs_cached_conn = cvs_handle;
+
+  spin_unlock(&cvs_cached_conn_lock);
+}
+
 
 /* cvs_handshake
  *
