@@ -4,7 +4,7 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
  what is it?
 ==========================
    cvsfs4hurd is a virtual (netfs based) filesystem allowing you to mount
-   remotly located CVS modules into your local filesystem.  The version
+   remotely located CVS modules into your local filesystem.  The version
    controlled files will appear to you just like regular ones.  If you just
    want to view one file (or a small bunch) you furthermore save a lot of
    network bandwidth since only these files will be downloaded.  The usual
@@ -20,16 +20,15 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
    then set up the translator using settrans
 
-     settrans -a /hurd/cvsfs cvs.berlios.de /cvsroot/cvsfs4hurd cvsfs
+     settrans -a /sbin/cvsfs cvs.sourceforge.net /cvsroot/xmltvr3 xmltVR3
 
-   the settrans command will take some while to finish since cvsfs tries
+   the settrans command will take some time to finish since cvsfs needs
    to download the directory tree first.  If the command finished successfully
    just 
 
      cd cvsfs_test
 
-   to enter the directory.  Feel free to ls, emacs, etc. as long as you'd
-   like to ;-)
+   to enter the directory.  Feel free to ls, emacs, etc.
 
  
  cvs server access through :ext:
@@ -66,10 +65,13 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
 
 
+More documentation can be found by 'info cvsfs' (texinfo manual)
+and 'man cvsfs' (unix style manpage).
+
 have fun with cvsf4hurd
  && enjoy the GNU generation ..
 
 Stefan Siegl <ssiegl@gmx.de>
 
 
-$Id: README,v 1.3 2004/10/02 08:29:10 stesie Exp $
+$Id: README,v 1.4 2004/10/10 12:43:27 stesie Exp $
