@@ -30,7 +30,7 @@
  *
  * Download the revision (as specified by rev) of the specified file. 
  */
-int
+error_t
 cvs_files_cache(struct netnode *file, struct revision *rev)
 {
   FILE *send, *recv;
@@ -99,42 +99,35 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 
       if(! strncmp(buf, "ok", 2))
 	{
+	  cvs_connection_release(send, recv);
+
 	  if(! got_something)
-	    {
-	      cvs_connection_release(send, recv);
-	      return -1; /* no content, sorry. */
-	    }
+	    return ENOENT; /* no content, sorry. */
 
 	  content = realloc(content, content_len + 1);
 
 	  if(! content)
-	    {
-	      cvs_connection_release(send, recv);
-	      return ENOMEM;
-	    }
-
+	    return ENOMEM;
+	    
 	  content[content_len] = 0; /* zero terminate */
 	  rev->contents = content;
 	  
-	  cvs_connection_release(send, recv);
 	  return 0; /* jippie, looks perfectly, he? */
 	}
 
       if(! strncmp(buf, "error", 5))
 	{
 	  cvs_connection_release(send, recv);
-	  return -1; /* wicked, get outta here anyhow ... 
-		      * TODO care for memory, that might got allocated already
-		      */
+	  free(content);
+	  return EIO;
 	}
 
       if(buf[1] != ' ') 
 	{
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return -1; /* hm, doesn't look got for us
-		      * anyhow, we need to care for allocated memory here! TODO
-		      */
+	  free(content);
+	  return EIO; /* hm, doesn't look got for us ... */
 	}
 
       switch(buf[0])
@@ -144,7 +137,8 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 		   */
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return -1; /* TODO free memory */
+	  free(content);
+	  return EIO;
 
 	case 'M':
 	  got_something = 1;
@@ -158,7 +152,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	      content = realloc(content, content_alloc);
 	      
 	      if(! content)
-		exit(11); /* FIXME make cvsfs survive little longer ... */
+		return ENOMEM; /* doesn't look too good for us :(   */
 	    }
 
 	  memcpy(content + content_len, buf + 4, buflen - 5);
@@ -170,13 +164,13 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	default:
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return -1; /* TODO this probably never happens, but care
-		      * for allocated memory anyways
-		      */
+	  free(content);
+	  return EIO;
 	}
     }
-  
+
+  /* well, got EOF, that shouldn't ever happen ... */
   cvs_connection_release(send, recv);
-  return -1; /* got eof, this shouldn't happen. 
-	      * free allocated memory anyway. */      
+  free(content);
+  return EIO;
 }

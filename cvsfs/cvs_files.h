@@ -17,6 +17,6 @@
 #include <stdio.h>
 
 /* Download the revision (as specified by rev) of the specified file.  */
-int cvs_files_cache(struct netnode *file, struct revision *rev);
+error_t cvs_files_cache(struct netnode *file, struct revision *rev);
 
 #endif /* CVS_FILES_H */
