@@ -90,7 +90,6 @@ struct netnode {
 
   /* pointer to the associated node structure, if any */
   unsigned int fileno;
-  struct node *node;
 };
 
 #endif /* CVSFS_CONFIG_H */

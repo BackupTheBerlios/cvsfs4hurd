@@ -152,7 +152,6 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	    entry->child = NULL;
 	    entry->parent = cwd;
 	    entry->fileno = next_fileno ++;
-	    entry->node = NULL;
 
 	    /* okay, create an initial (mostly empty) revision entry */
 	    entry->revision = malloc(sizeof(*entry->revision));
@@ -234,7 +233,6 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   new->parent = parent;
   new->revision = NULL; /* mark as a directory */
   new->fileno = next_fileno ++;
-  new->node = NULL; /* assigned in cvsfs_make_node */
   
   if(parent)
     parent->child = new;

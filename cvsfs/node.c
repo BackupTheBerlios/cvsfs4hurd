@@ -38,17 +38,6 @@ cvsfs_make_node(struct netnode *nn)
 {
   struct node *node;
 
-  if(nn->node) 
-    {
-      /* there already is a node structure, just return another reference
-       * to this one, instead of wasting memory for yet another one
-       */
-      mutex_lock(&nn->node->lock);
-      netfs_nref(nn->node);
-      mutex_unlock(&nn->node->lock);
-      return nn->node;
-    }
-
   if(! (node = netfs_make_node(nn)))
     return NULL;
 
@@ -101,7 +90,7 @@ cvsfs_make_node(struct netnode *nn)
    */
   node->nn_stat.st_mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
 
-  return (nn->node = node);
+  return node;
 }
 
 
@@ -125,7 +114,6 @@ cvsfs_make_virtual_node(struct netnode *nn, struct revision *rev)
 
   new_nn->sibling = NULL;
   new_nn->parent = NULL;
-  new_nn->node = NULL; /* will be assigned by cvsfs_make_node */
   new_nn->name = rev->id;
   new_nn->revision = rev;
   new_nn->fileno = next_fileno ++;

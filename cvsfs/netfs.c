@@ -323,15 +323,7 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	if(! strcmp(nn->name, name)) 
 	  {
 	    err = 0; /* hey, we got it! */
-
-	    if(nn->node)
-	      {
-		*node = nn->node;
-		netfs_nref(nn->node);
-	      }
-	    else 
-	      *node = cvsfs_make_node(nn);
-
+	    *node = cvsfs_make_node(nn);
 	    break;
 	  }
     }
@@ -634,11 +626,6 @@ netfs_get_dirents (struct iouser *cred, struct node *dir,
 void
 netfs_node_norefs (struct node *node)
 {
-  /* the node will be freed, therefore our nn->node pointer will not
-   * be valid any longer, therefore reset it 
-   */
-  node->nn->node = NULL;
-
   if(node->nn->revision && !node->nn->parent)
     /* node is a virtual node, therefore we need to free the netnode */
     free(node->nn);
