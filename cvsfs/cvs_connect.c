@@ -45,6 +45,12 @@ time_t cvs_cached_conn_release_time = 0;
 /* callback function we install for SIGALRM signal */
 static void cvs_connect_sigalrm_handler(int);
 
+/* callback function we install for SIGUSR1 to force cvstree update */
+static void cvs_connect_sigusr1_handler(int);
+
+/* callback function for SIGUSR2, to force disconnection of cached conn. */
+static void cvs_connect_sigusr2_handler(int);
+
 /* cvs_connect_init
  *
  * initialize cvs_connect stuff
@@ -57,6 +63,9 @@ cvs_connect_init(void)
 
   signal(SIGALRM, cvs_connect_sigalrm_handler);
   alarm(30);
+
+  signal(SIGUSR1, cvs_connect_sigusr1_handler);
+  signal(SIGUSR2, cvs_connect_sigusr2_handler);
 }
 
 /* cvs_connect
@@ -286,6 +295,39 @@ cvs_connect_sigalrm_handler(int signal)
      && (time(NULL) - cvs_cached_conn_release_time > 90))
     {
       /* okay, connection is rather old, drop it ... */
+      fclose(cvs_cached_conn.send);
+      cvs_cached_conn.send = NULL;
+
+      fclose(cvs_cached_conn.recv);
+      cvs_cached_conn.recv = NULL;
+    }
+
+  spin_unlock(&cvs_cached_conn_lock);
+}
+
+
+/* cvs_connect_sigusr1_handler
+ *
+ * callback function we install for SIGUSR1 to force cvstree update
+ */
+static void
+cvs_connect_sigusr1_handler(int sig) 
+{
+  cvs_tree_read(&rootdir);
+}
+
+
+/* cvs_connect_sigusr2_handler
+ *
+ * callback function for SIGUSR2, to force disconnection of cached conn.
+ */
+static void
+cvs_connect_sigusr2_handler(int sig)
+{
+  spin_lock(&cvs_cached_conn_lock);
+
+  if(cvs_cached_conn.send)
+    {
       fclose(cvs_cached_conn.send);
       cvs_cached_conn.send = NULL;
 
