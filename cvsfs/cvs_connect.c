@@ -77,8 +77,6 @@ cvs_connect_init(void)
 error_t
 cvs_connect(FILE **send, FILE **recv)
 {
-  error_t err = 0;
-
   /* look whether we've got a cached connection available */
   spin_lock(&cvs_cached_conn_lock);
 
@@ -92,6 +90,22 @@ cvs_connect(FILE **send, FILE **recv)
     }
 
   spin_unlock(&cvs_cached_conn_lock);
+
+  /* get a fresh, new connection ... */
+  return cvs_connect_fresh(send, recv);
+}
+
+
+
+/* cvs_connect_fresh
+ *
+ * Try connecting to the cvs host, like cvs_connect, but get get
+ * a fresh connection ...
+ */
+error_t
+cvs_connect_fresh(FILE **send, FILE **recv)
+{
+  error_t err = 0;
 
   switch(config.cvs_mode)
     {

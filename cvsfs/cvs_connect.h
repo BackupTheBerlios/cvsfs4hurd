@@ -27,6 +27,10 @@ void cvs_connect_init(void);
  */
 error_t cvs_connect(FILE **send, FILE **recv);
 
+/* Try connecting to cvs host, like cvs_connect, but make a fresh connection
+ */
+error_t cvs_connect_fresh(FILE **send, FILE **recv);
+
 /* release the connection.  the connection may then either be cached
  * and reused on next cvs_connect() or may be closed.
  */
