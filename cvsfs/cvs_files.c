@@ -1,7 +1,7 @@
 /**********************************************************
  * cvs_files.c
  *
- * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Publice License,
@@ -358,6 +358,7 @@ cvs_files_gzip_inflate(FILE *recv, size_t bytes, char **content, size_t *len)
 error_t
 cvs_files_cache(struct netnode *file, struct revision *rev)
 {
+  FUNC_PROLOGUE_FMT("cvs_files_cache", "file=%s, rev=%s", file->name, rev->id);
   FILE *send, *recv;
   char buf[1024]; /* 1k should be enough for most cvs repositories, if
 		   * cvsfs tell's you to increase this value, please do so.
@@ -377,10 +378,10 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
        * therefore get a fresh connection ...
        */
       if(cvs_connect_fresh(&send, &recv))
-	return EIO;
+	FUNC_RETURN(EIO);
     }
   else if(cvs_connect(&send, &recv))
-    return EIO;
+    FUNC_RETURN(EIO);
 
   /* write out request header */
   fprintf(send,
@@ -470,14 +471,14 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	  if(! bytes)
 	    {
 	      cvs_connection_kill(send, recv);
-	      return EIO; /* this should not happen, empty file?? */
+	      FUNC_RETURN(EIO); /* this should not happen, empty file?? */
 	    }
 
 	  if((err = cvs_files_gzip_inflate(recv, bytes,
 					   &rev->contents, &rev->length)))
 	    {
 	      cvs_connection_kill(send, recv);
-	      return err;
+	      FUNC_RETURN(err);
 	    }
 	}
 #endif /* HAVE_LIBZ */
@@ -497,7 +498,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	    {
 	      perror(PACKAGE);
 	      cvs_connection_kill(send, recv);
-	      return ENOMEM;
+	      FUNC_RETURN(ENOMEM);
 	    }
 
 	  while(bytes && (read = fread(ptr, 1, bytes, recv)))
@@ -512,7 +513,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	      fprintf(stderr, "unable to read whole file %s\n", file->name);
 	      free(content);
 	      cvs_connection_kill(send, recv);
-	      return EIO;
+	      FUNC_RETURN(EIO);
 	    }
 
 	  free(rev->contents);
@@ -541,7 +542,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 
   /* well, got EOF, that shouldn't ever happen ... */
   cvs_connection_kill(send, recv);
-  return EIO;
+  FUNC_EPILOGUE(EIO);
 }
 
 
