@@ -15,35 +15,25 @@
 #  include <config.h>
 #endif
 
+#define PACKAGE "cvsfs"
+
 #include <string.h>
 #include <malloc.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <stdlib.h>
 
 #include "cvsfs.h"
 #include "cvs_pserver.h"
 #include "tcpip.h"
 
-static unsigned char pserver_encrypt_tab[] = 
-  {
-    0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-  114,120, 53, 79, 96,109, 72,108, 70, 64, 76, 67,116, 74, 68, 87,
-  111, 52, 75,119, 49, 34, 82, 81, 95, 65,112, 86,118,110,122,105,
-   41, 57, 83, 43, 46,102, 40, 89, 38,103, 45, 50, 42,123, 91, 35,
-  125, 55, 54, 66,124,126, 59, 47, 92, 71,115, 78, 88,107,106, 56,
-   36,121,117,104,101,100, 69, 73, 99, 63, 94, 93, 39, 37, 61, 48,
-   58,113, 32, 90, 44, 98, 60, 51, 33, 97, 62, 77, 84, 80, 85,223,
-  225,216,187,166,229,189,222,188,141,249,148,200,184,136,248,190,
-  199,170,181,204,138,232,218,183,255,234,220,247,213,203,226,193,
-  174,172,228,252,217,201,131,230,197,211,145,238,161,179,160,212,
-  207,221,254,173,202,146,224,151,140,196,205,130,135,133,143,246,
-  192,159,244,239,185,168,215,144,139,165,180,157,147,186,214,176,
-  227,231,219,169,175,156,206,198,129,164,150,210,154,177,134,127,
-  182,128,158,208,162,132,167,209,149,241,153,251,237,236,171,195,
-  243,233,253,240,194,250,191,155,142,137,245,235,163,242,178,152
-  };
+/* look for a password entry in $HOME/.cvspass file, permitting login
+ * with credentials from given config structure.
+ */
+static char *cvs_pserver_fetch_pw(cvsfs_config *config);
 
 
-static const char *cvs_pserver_encrypt(const char *);
 
 /* cvs_pserver_connect
  *
@@ -61,12 +51,15 @@ cvs_pserver_connect(cvsfs_config *config)
      */ 
     return NULL; 
 
+  if(! config->cvs_password)
+    config->cvs_password = cvs_pserver_fetch_pw(config);
+
   /* okay, now let's talk a little pserver dialect to log in ... */
   fprintf(cvs_handle, "BEGIN AUTH REQUEST\n");
   fprintf(cvs_handle, "%s\n%s\n%s\n", 
 	  config->cvs_root,
 	  config->cvs_username,
-	  cvs_pserver_encrypt(config->cvs_password));
+	  config->cvs_password);
   fprintf(cvs_handle, "END AUTH REQUEST\n");
 
   /* the result of our login request is handled in cvs_connect()
@@ -77,26 +70,126 @@ cvs_pserver_connect(cvsfs_config *config)
 
 
 
-/* cvs_pserver_encrypt
+/* cvs_pserver_fetch_pw
  * 
- * encrypt cvs-pserver password
+ * look for a password entry in $HOME/.cvspass file, permitting login
+ * with credentials from given config structure.
+ * make sure to free() the returned memory, if needed!
  */
-static const char *
-cvs_pserver_encrypt(const char *plain_pw)
+static char *
+cvs_pserver_fetch_pw(cvsfs_config *config)
 {
-  static char *buf = NULL, *ptr;
-  int len = strlen(plain_pw);
+  char buf[512]; /* 512 byte should be enough for most CVSROOTs, if
+		  * cvsfs tell's you to increase this value, please do so.
+		  */
+  char *cvspass_path;
+  FILE *cvspass;
+  char *cvsroot;
+  int cvsroot_len;
+  const char null_pw[] = "A"; /* empty password, returned if we fail */
 
-  buf = realloc(buf, len + 2);
-  if(! buf) return NULL;
+  if(! config->homedir)
+    config->homedir = getenv("HOME");
+  
+  if(! config->homedir)
+    {
+      /* hmm, HOME environment variable not set, try scaning /etc/passwd
+       * for the homedir path ...
+       */
+      uid_t uid = getuid();
+      struct passwd *pwent;
 
-  buf[0] = 'A'; /* tell, that we're using pserver password */
+      for(pwent = getpwent(); pwent; getpwent())
+	if(pwent->pw_uid == uid)
+	  {
+	    config->homedir = strdup(pwent->pw_dir);
+	    break;
+	  }
 
-  ptr = &buf[1];
-  do
-    *ptr = pserver_encrypt_tab[(int)*plain_pw];
-  while(*ptr && plain_pw ++ && ptr ++);
+      endpwent();
+    }
+  
+  if(! config->homedir)
+    {
+      fprintf(stderr, PACKAGE ": cannot figure out what your homedir is. "
+	      "trying empty password.\n");
+      return strdup(null_pw);
+    }
 
-  return buf;
+  if(! (cvspass_path = malloc(strlen(config->homedir) + 10)))
+    {
+      perror(PACKAGE);
+      return strdup(null_pw); /* I pray for it to have a long lasting life! */
+    }
+
+  sprintf(cvspass_path, "%s/.cvspass", config->homedir);
+
+  if(! (cvspass = fopen(cvspass_path, "r")))
+    {
+      perror(PACKAGE ": cannot open .cvspass file for reading");
+      free(cvspass_path);
+      fprintf(stderr, PACKAGE ": trying to log in without password.\n");
+      return strdup(null_pw);
+    }
+
+  free(cvspass_path);
+  
+  /* predict length of cvsroot string */
+  cvsroot_len = 20 + strlen(config->cvs_username) +
+    strlen(config->cvs_hostname) + strlen(config->cvs_root);
+
+  if(! (cvsroot = malloc(cvsroot_len)))
+    {
+      fclose(cvspass);
+      perror(PACKAGE);
+      return strdup(null_pw); /* I pray for it to have a long lasting life! */
+    }
+
+  cvsroot_len = snprintf(cvsroot, cvsroot_len, ":pserver:%s@%s:%d%s",
+			 config->cvs_username, config->cvs_hostname,
+			 config->cvs_port, config->cvs_root);
+
+  while(fgets(buf, sizeof(buf), cvspass))
+    {
+      char *ptr = buf + strlen(buf);
+      ptr --;
+
+      if(*ptr != 10)
+	{
+	  fprintf(stderr, PACKAGE "cvs_pserver_fetch_pw's parse buffer is "
+		  "too small, stop for the moment.\n");
+	  exit(10);
+	}
+
+      /* chop the linefeed off the end */
+      *ptr = 0;
+
+      if(buf[0] != '/' || buf[1] != '1' || buf[2] != ' ')
+	continue; /* syntax error, well, ignore silently ... */
+
+      ptr = buf + 3;
+
+      if(strncmp(ptr, cvsroot, cvsroot_len))
+	continue; /* didn't match, try next one ... */
+
+      ptr += cvsroot_len;
+      if(*(ptr ++) != ' ')
+	continue; /* missing separator, cvsroot of .cvspass differs ... */
+
+      /* okay, ptr points to where the password begins ... */
+      fclose(cvspass);
+      free(cvsroot);
+
+      return strdup(ptr);
+    }
+
+  /* hmm, eof reached, but no password found! */
+  fprintf(stderr, PACKAGE ": cannot find password for CVSROOT '%s' in "
+	  "your .cvspass file, trying no password at all\n", cvsroot);
+
+  fclose(cvspass);
+  free(cvsroot);
+
+  return strdup(null_pw);
 }
 
