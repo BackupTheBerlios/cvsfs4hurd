@@ -39,6 +39,30 @@
 error_t
 netfs_validate_stat (struct node *node, struct iouser *cred)
 {
+  if(node->nn->revision && node->nn->parent)
+    {
+      if(! node->nn->revision->contents)
+	{
+	  /* head revision not available locally yet, retrieve it ... */
+	  rwlock_writer_lock(&node->nn->revision->lock);
+	  cvs_files_cache(node->nn, node->nn->revision);
+	  rwlock_writer_unlock(&node->nn->revision->lock);
+	}
+
+      if(node->nn->revision->contents)
+	{
+	  node->nn_stat.st_mode = (node->nn->revision->perm | S_IFREG)
+	    &~(S_IWUSR | S_IWGRP | S_IWOTH);
+	  node->nn_stat.st_size = node->nn->revision->length;
+
+	  node->nn_stat.st_mtime =
+	    node->nn_stat.st_ctime = node->nn->revision->time;
+
+	  node->nn_stat.st_mtime_usec =
+	    node->nn_stat.st_ctime_usec = 0;
+	}
+    }
+
   return 0;
 }
 
@@ -503,7 +527,7 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
       rwlock_reader_lock(&node->nn->revision->lock);
     }
 
-  maxlen = strlen(node->nn->revision->contents);
+  maxlen = node->nn->revision->length;
   
   if(offset >= maxlen)
     {
