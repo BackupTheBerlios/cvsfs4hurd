@@ -20,15 +20,19 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
    then set up the translator using settrans
 
-     settrans -a /sbin/cvsfs cvs.sourceforge.net /cvsroot/xmltvr3 xmltVR3
+     settrans -a cvsfs_test /sbin/cvsfs \
+       cvs.sourceforge.net /cvsroot/xmltvr3 xmltVR3
 
-   the settrans command will take some time to finish since cvsfs needs
-   to download the directory tree first.  If the command finished successfully
-   just 
+   After the settrans command finished, cvsfs will try to download the
+   directory tree in the background.  
+
+   Now just use
 
      cd cvsfs_test
 
-   to enter the directory.  Feel free to ls, emacs, etc.
+   to enter the directory.  If you try to access the directory before
+   cvsfs has completed downloading the whole directory tree, this
+   action will be delayed.  Feel free to use ls, emacs, etc. now.
 
  
  cvs server access through :ext:
@@ -51,8 +55,7 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
  it doesn't work! what to do now?
 ========================================
-   cvsfs4hurd is work in progress, I started coding in the middle of
-   september 2004, which isn't too far back.  If you stumble over a bug,
+   cvsfs4hurd is work in progress.  If you stumble over a bug,
    please please either tell me by writing an email or by filing a bug report
    on 
 
@@ -65,13 +68,11 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
 
 
-More documentation can be found by 'info cvsfs' (texinfo manual)
-and 'man cvsfs' (unix style manpage).
+More (detailed) documentation can be found in the cvsfs texinfo
+manual.  Enter 'info cvsfs' at the command line to display it.
 
-have fun with cvsf4hurd
- && enjoy the GNU generation ..
+Have fun with cvsfs4hurd
+ and enjoy the GNU generation ..
 
 Stefan Siegl <ssiegl@gmx.de>
-
-
-$Id: README,v 1.4 2004/10/10 12:43:27 stesie Exp $
+$Id: README,v 1.5 2005/03/19 22:35:51 stesie Exp $
