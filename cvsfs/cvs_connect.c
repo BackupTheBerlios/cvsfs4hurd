@@ -189,7 +189,7 @@ cvs_handshake(FILE *send, FILE *recv)
  * read one line from cvs server and make sure, it's an ok message. else
  * call cvs_treat_error. return 0 on 'ok'.
  */
-int
+error_t
 cvs_wait_ok(FILE *cvs_handle) 
 {
   char buf[128];
@@ -200,10 +200,10 @@ cvs_wait_ok(FILE *cvs_handle)
 	return 0;
 
       cvs_treat_error(cvs_handle, buf);
-      return 1;
+      return EIO;
     }
 
-  return 1; /* hmm, didn't work, got eof */
+  return EIO; /* hmm, didn't work, got eof */
 }
 
 

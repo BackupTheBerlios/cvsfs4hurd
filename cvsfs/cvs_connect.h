@@ -35,7 +35,7 @@ void cvs_connection_release(FILE *send, FILE *recv);
 /* read one line from cvs server and make sure, it's an ok message. else
  * call cvs_treat_error. return 0 on 'ok'.
  */
-int cvs_wait_ok(FILE *recv_handle);
+error_t cvs_wait_ok(FILE *recv_handle);
 
 /* notify the user (aka log to somewhere) that we've received some error
  * messages, we don't know how to handle ...
