@@ -31,7 +31,7 @@
 /* do cvs handshake, aka tell about valid responses and check whether all
  * necessary requests are supported.
  */
-static int cvs_handshake(FILE *send, FILE *recv);
+static error_t cvs_handshake(FILE *send, FILE *recv);
 
 /* try to keep one connection to the cvs host open, FILE* handle of our
  * connection + rwlock, which must be held, when modifying 
@@ -146,7 +146,7 @@ cvs_connection_release(FILE *send, FILE *recv)
  * do cvs handshake, aka tell about valid responses and check whether all
  * necessary requests are supported.
  */
-static int
+static error_t
 cvs_handshake(FILE *send, FILE *recv)
 {
   char buf[4096]; /* Valid-requests answer can be really long ... */
@@ -169,14 +169,31 @@ cvs_handshake(FILE *send, FILE *recv)
       return 1; /* connection gets closed by caller! */
     }
 
-  /* TODO: care for the Valid-requests response, make sure everything we
-   * need is there
-   */
-
   if(strncmp(buf, "Valid-requests ", 15))
     {
       cvs_treat_error(recv, buf);
       return 1; /* connection will be closed by our caller */
+    }
+  else
+    {
+      const char **reqs_ptr;
+      const char *cvs_needed_reqs[] = {
+	"valid-requests", "Root", "Valid-responses", "UseUnchanged",
+	"Argument", "rdiff", 
+
+	/* terminate list */
+	NULL
+      };
+
+      for(reqs_ptr = cvs_needed_reqs; *reqs_ptr; reqs_ptr ++)
+	if(! strstr(buf, *reqs_ptr))
+	  {
+	    fprintf(stderr, PACKAGE ": cvs server doesn't understand "
+		    "'%s' command, cannot live with that.\n", *reqs_ptr);
+
+	    /* tell caller to close connection ... */
+	    return EIO;
+	  }
     }
 
   return cvs_wait_ok(recv);
