@@ -153,6 +153,12 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	    entry->parent = cwd;
 	    entry->fileno = next_fileno ++;
 
+	    /* create lock entry for our new netnode, as it is not linked
+	     * to somewhere and this is the only thread to update tree info,
+	     * we don't have to write lock to access entry->revision!
+	     */
+	    rwlock_init(&entry->lock);
+
 	    /* okay, create an initial (mostly empty) revision entry */
 	    entry->revision = malloc(sizeof(*entry->revision));
 	    if(! entry->revision)
@@ -166,6 +172,7 @@ cvs_tree_read(FILE *cvs_handle, const char *root_dir)
 	    entry->revision->id = strdup(revision);
 	    entry->revision->contents = NULL;
 	    entry->revision->next = NULL;
+	    rwlock_init(&entry->revision->lock);
 
 	    cwd->child = entry;
 	    break;
@@ -233,6 +240,9 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   new->parent = parent;
   new->revision = NULL; /* mark as a directory */
   new->fileno = next_fileno ++;
+
+  /* rwlock_init(&new);
+   * not necessary, we don't have to lock, to check for revision == NULL! */
   
   if(parent)
     parent->child = new;

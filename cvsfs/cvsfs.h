@@ -18,7 +18,7 @@
 extern volatile struct mapped_time_value *cvsfs_maptime;
 
 #include <stdio.h>
-
+#include <rwlock.h>
 
 
 typedef struct {
@@ -62,6 +62,11 @@ struct revision {
    * revisions available locally
    */
   struct revision *next;
+
+  /* locking mechanism for the revision structure, needs to be held,
+   * on read/write access to contents field.
+   */
+  struct rwlock lock;
 };
 
 
@@ -88,8 +93,16 @@ struct netnode {
    */ 
   struct revision *revision;
 
-  /* pointer to the associated node structure, if any */
+  /* inode number, assigned to this netnode structure */
   unsigned int fileno;
+
+  /* locking mechanism for the netnode. this needs to be held whenever touching
+   * the revisions tree (the linking), access to revision to check whether it
+   * is NULL (and therefore a directory) doesn't need to be locked.
+   * for the revision structure itself there
+   * is a separate lock inside each struct revision.
+   */
+  struct rwlock lock;
 };
 
 #endif /* CVSFS_CONFIG_H */

@@ -275,12 +275,20 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
     }
   else if(dir->nn->revision)
     {
-      struct revision *rev = dir->nn->revision;
+      struct revision *rev;
       struct netnode *nn = dir->nn->parent ? dir->nn : dir->nn->child;
+
+      /* read-lock the real netnode - not the virtual one - what wouldn't
+       * make much sense.
+       */
+      rwlock_reader_lock(&nn->lock);
+      rev = dir->nn->revision;
 
       for(; rev; rev = rev->next)
 	if(! strcmp(rev->id, name))
 	  break;
+
+      rwlock_reader_unlock(&nn->lock);
 
       if(! rev && (rev = malloc(sizeof(*rev))))
 	{
@@ -292,6 +300,7 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  rev->id = strdup(name);
 	  rev->contents = NULL;
 	  rev->next = NULL;
+	  rwlock_init(&rev->lock);
 
 	  if(cvs_files_cache(cvs_handle, nn, rev))
 	    {
@@ -303,8 +312,12 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  else
 	    {
 	      /* okay, went well, enqueue into revisions chain */
+	      rwlock_writer_lock(&nn->lock);
+
 	      rev->next = nn->revision->next;
 	      nn->revision->next = rev;
+
+	      rwlock_writer_unlock(&nn->lock);
 	    }
 
 	  cvs_connection_release(cvs_handle);
@@ -448,6 +461,9 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
       return EISDIR;
     }
 
+  rwlock_reader_lock(&node->nn->lock);
+  rwlock_reader_lock(&node->nn->revision->lock);
+
   if(! node->nn->revision->contents) 
     {
       /* we don't have the content of this revision cached locally,
@@ -458,16 +474,28 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
        */
       FILE *cvs_handle = cvs_connect(&config);
 
+      /* oops, we need a writer lock ... */
+      rwlock_reader_unlock(&node->nn->revision->lock);
+      rwlock_writer_lock(&node->nn->revision->lock);
+
       if(cvs_files_cache(cvs_handle,
 			 node->nn->parent ? node->nn : node->nn->child,
 			 node->nn->revision))
 	{
 	  cvs_connection_release(cvs_handle);
+	  rwlock_writer_unlock(&node->nn->revision->lock);
+	  rwlock_reader_unlock(&node->nn->lock);
 	  *len = 0;
 	  return EIO;
 	}
 
       cvs_connection_release(cvs_handle);
+
+      /* TODO consider whether there's a nicer way, so that we don't have
+       * to relock two times 
+       */
+      rwlock_writer_unlock(&node->nn->revision->lock);
+      rwlock_reader_lock(&node->nn->revision->lock);
     }
 
   maxlen = strlen(node->nn->revision->contents);
@@ -476,6 +504,8 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
     {
       /* trying to read beyond of file, cowardly refuse to do so ... */
       *len = 0;
+      rwlock_reader_unlock(&node->nn->revision->lock);
+      rwlock_reader_unlock(&node->nn->lock);
       return 0;
     }
 
@@ -483,6 +513,8 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
     *len = maxlen - offset;
 
   memcpy(data, node->nn->revision->contents + offset, *len);
+  rwlock_reader_unlock(&node->nn->revision->lock);
+  rwlock_reader_unlock(&node->nn->lock);
   return 0;
 }
 
