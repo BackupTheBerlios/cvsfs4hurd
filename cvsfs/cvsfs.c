@@ -71,13 +71,18 @@ static char *doc = "cvs filesystem translator for the Hurd.\v"
 enum 
   {
     OPT_PORT = 'p',
+    OPT_USER = 'u',
+    OPT_HOMEDIR = 'h',
   };
 
 static const struct argp_option cvsfs_options[] =
   { 
     { "port", OPT_PORT, "PORT", 0,
       "port to connect to on given host (if not using standard port)", 0 },
-
+    { "user", OPT_USER, "USERNAME", 0,
+      "username to supply to cvs host, when logging in", 0 },
+    { "homedir", OPT_HOMEDIR, "PATH", 0,
+      "path of your home directory (= path to .cvspass file)", 0 },
     /* terminate list */
     { NULL, 0, NULL, 0, NULL, 0 }
   };
@@ -110,7 +115,7 @@ main(int argc, char **argv)
   config.cvs_mode = PSERVER;
   config.cvs_port = 2401;
   config.cvs_username = "anonymous";
-  config.cvs_password = "";
+  config.cvs_password = NULL;
 
   /* parse command line parameters, first things first. */
   argp_parse(&argp, argc, argv, 0, 0, 0);
@@ -189,6 +194,14 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
     {
     case OPT_PORT:
       config.cvs_port = atoi(arg);
+      break;
+
+    case OPT_USER:
+      config.cvs_username = strdup(arg);
+      break;
+
+    case OPT_HOMEDIR:
+      config.homedir = strdup(arg);
       break;
 
     case ARGP_KEY_ARGS:
