@@ -93,10 +93,13 @@ static const struct argp_option cvsfs_options[] =
 
 volatile struct mapped_time_value *cvsfs_maptime;
 
+/* pointer to root netnode */
+struct netnode *rootdir = NULL;
+
+
 int
 main(int argc, char **argv)
 {
-  struct netnode *rootdir = NULL;
   io_statbuf_t ul_stat;
   mach_port_t bootstrap, ul_node;
   struct argp argp =

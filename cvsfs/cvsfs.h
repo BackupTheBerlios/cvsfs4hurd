@@ -111,4 +111,7 @@ struct netnode {
   struct rwlock lock;
 };
 
+/* pointer to root netnode */
+extern struct netnode *rootdir;
+
 #endif /* CVSFS_CONFIG_H */
