@@ -296,9 +296,10 @@ cvs_connect_sigalrm_handler(int signal)
     {
       /* okay, connection is rather old, drop it ... */
       fclose(cvs_cached_conn.send);
-      cvs_cached_conn.send = NULL;
+      if(cvs_cached_conn.send != cvs_cached_conn.recv)
+	fclose(cvs_cached_conn.recv);
 
-      fclose(cvs_cached_conn.recv);
+      cvs_cached_conn.send = NULL;
       cvs_cached_conn.recv = NULL;
     }
 
@@ -329,9 +330,10 @@ cvs_connect_sigusr2_handler(int sig)
   if(cvs_cached_conn.send)
     {
       fclose(cvs_cached_conn.send);
-      cvs_cached_conn.send = NULL;
+      if(cvs_cached_conn.send != cvs_cached_conn.recv)
+	fclose(cvs_cached_conn.recv);
 
-      fclose(cvs_cached_conn.recv);
+      cvs_cached_conn.send = NULL;
       cvs_cached_conn.recv = NULL;
     }
 
