@@ -1,0 +1,103 @@
+/**********************************************************
+ * node.c
+ *
+ * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Publice License,
+ * version 2 or any later. The license is contained in the COPYING
+ * file that comes with the cvsfs4hurd distribution.
+ *
+ * code related to handling (aka create, etc.) netfs nodes
+ */
+
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
+
+#define PACKAGE "cvsfs"
+#define VERSION "0.1"
+
+#include "cvsfs.h"
+#include "node.h"
+
+#include <hurd/netfs.h>
+#include <assert.h>
+#include <stdio.h>
+
+/* cvsfs_make_node
+ *
+ * create a struct node* for the specified netnode 'nn'. 
+ */
+struct node *
+cvsfs_make_node(struct netnode *nn)
+{
+  struct node *node;
+
+  if(nn->node) 
+    {
+      /* there already is a node structure, just return another reference
+       * to this one, instead of wasting memory for yet another one
+       */
+
+      mutex_lock(&nn->node->lock);
+      netfs_nref(nn->node);
+      mutex_unlock(&nn->node->lock);
+      return nn->node;
+    }
+
+  if(! (node = netfs_make_node(nn)))
+    return NULL;
+
+  /* put timestamp on file */
+  fshelp_touch(&node->nn_stat,
+	       TOUCH_ATIME | TOUCH_MTIME | TOUCH_CTIME, cvsfs_maptime);
+
+  /* initialize stats of new node ... */
+  node->nn_stat.st_fstype = FSTYPE_MISC;
+  node->nn_stat.st_fsid = stat_template.fsid;
+  node->nn_stat.st_ino = nn->fileno;
+  node->nn_stat.st_mode = stat_template.mode;
+  node->nn_stat.st_nlink = 1;
+  node->nn_stat.st_uid = stat_template.uid;
+  node->nn_stat.st_gid = stat_template.gid;
+  node->nn_stat.st_size = 0; /* TODO, find a way to figure out size of file */
+  node->nn_stat.st_author = stat_template.author;
+
+  if(! nn->revision)
+    {
+      /* we're creating a node for a directory, mark as such! */
+      node->nn_stat.st_mode |= S_IFDIR;
+
+      /* since we got a directory we need to supply "executable" 
+       * permissions, so our user is enabled to make use of this dir
+       */
+      if(node->nn_stat.st_mode & S_IRUSR)
+	node->nn_stat.st_mode |= S_IXUSR;
+
+      if(node->nn_stat.st_mode & S_IRGRP)
+	node->nn_stat.st_mode |= S_IXGRP;
+
+      if(node->nn_stat.st_mode & S_IROTH)
+	node->nn_stat.st_mode |= S_IXOTH;
+    }
+  else
+    {
+      /* well, we're creating a new node for a file ... */
+      node->nn_stat.st_mode |= S_IFREG;
+
+      /* for now simply drop all execute permissions, this needs to be fixed,
+       * since CVS support executables, e.g. shell scripts, that we need to
+       * support .... FIXME
+       */
+      node->nn_stat.st_mode &= ~(S_IXUSR | S_IXGRP | S_IXOTH);
+    }
+
+  /* cvsfs is currently read only, check-ins etc. aren't yet supported,
+   * therefore drop permission to write 
+   */
+  node->nn_stat.st_mode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
+
+  return (nn->node = node);
+}
+    
