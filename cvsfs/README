@@ -45,8 +45,9 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
 
    to access the CVS repository of cvsfs4hurd.
 
-   You probably want to use authorized-keys feature of ssh, so you
-   don't have to enter your account's password every other time.
+   You probably want to use authorized-keys feature of ssh, as you will
+   not be able to enter it interactively, since cvsfs translator does not
+   have a connected terminal.
 
 
  it doesn't work! what to do now?
@@ -71,4 +72,4 @@ have fun with cvsf4hurd
 Stefan Siegl <ssiegl@gmx.de>
 
 
-$Id: README,v 1.2 2004/10/02 07:42:41 stesie Exp $
+$Id: README,v 1.3 2004/10/02 08:29:10 stesie Exp $
