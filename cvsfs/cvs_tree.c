@@ -31,14 +31,15 @@ volatile unsigned int next_fileno = 1;
 
 /* netnode *cvs_tree_read
  *
- * read the whole file and directory tree of the specified module (root_dir).
- * RETURN: pointer to the root directory, NULL on error
+ * read the whole file and directory tree of the module specified in config
+ * structure.  The tree is stored in **ptr_to_rootnode, make sure
+ * *ptr_to_rootnode is NULL on first call.
+ * RETURN: 0 on success
  */
-struct netnode *
-cvs_tree_read(const char *root_dir)
+error_t
+cvs_tree_read(struct netnode **rootdir)
 {
   FILE *send, *recv;
-  struct netnode *rootdir = NULL;
   struct netnode *cwd = (void *) 0xDEADBEEF;
   char *ptr;
   char buf[4096]; /* 4k should be enough for most cvs repositories, if
@@ -46,7 +47,7 @@ cvs_tree_read(const char *root_dir)
 		   */
 
   if(cvs_connect(&send, &recv))
-    return NULL;
+    return EIO;
 
   fprintf(send, 
 	  "UseUnchanged\n"
@@ -54,7 +55,7 @@ cvs_tree_read(const char *root_dir)
 	  "Argument -r\nArgument 0\n"
 	  "Argument -r\nArgument HEAD\n"
 	  "Argument %s\n"
-	  "rdiff\n", root_dir);
+	  "rdiff\n", config.cvs_module);
 
   /* cvs now either answers like this:
    * E cvs rdiff: Diffing <directory>
@@ -82,20 +83,20 @@ cvs_tree_read(const char *root_dir)
       if(! strncmp(buf, "ok", 2))
 	{
 	  cvs_connection_release(send, recv);
-	  return rootdir;
+	  return 0;
 	}
 
       if(! strncmp(buf, "error", 5))
 	{
 	  cvs_connection_release(send, recv);
-	  return NULL; /* TODO free rootdir structure, if not empty */
+	  return EIO;
 	}
 
       if(buf[1] != ' ') 
 	{
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return NULL; /* TODO free rootdir structure */
+	  return EIO;
 	}
 
       switch(buf[0])
@@ -105,19 +106,19 @@ cvs_tree_read(const char *root_dir)
 	    {
 	      cvs_treat_error(recv, buf);
 	      cvs_connection_release(send, recv);
-	      return NULL; /* TODO free rootdir */
+	      return EIO;
 	    }
 
 	  ptr += 8;
-	  if(! rootdir) 
-	    cwd = rootdir = cvs_tree_enqueue(NULL, ptr);
+	  if(! *rootdir) 
+	    cwd = *rootdir = cvs_tree_enqueue(NULL, ptr);
 	  else 
-	    cwd = cvs_tree_enqueue(rootdir, ptr);
+	    cwd = cvs_tree_enqueue(*rootdir, ptr);
 
 	  if(! cwd)
 	    {
 	      cvs_connection_release(send, recv);
-	      return NULL; /* TODO free allocated memory */
+	      return ENOMEM;
 	    }
 	  
 	  break;
@@ -127,7 +128,7 @@ cvs_tree_read(const char *root_dir)
 	    {
 	      cvs_treat_error(recv, buf);
 	      cvs_connection_release(send, recv);
-	      return NULL; /* TODO free rootdir */
+	      return EIO;
 	    }
 	  
 	  {
@@ -139,7 +140,7 @@ cvs_tree_read(const char *root_dir)
 	      {
 		cvs_treat_error(recv, buf);
 		cvs_connection_release(send, recv);
-		return NULL; /* TODO clear rootdir struct */
+		return EIO;
 	      }
 	    *(ptr ++) = 0;
 
@@ -153,7 +154,7 @@ cvs_tree_read(const char *root_dir)
 	      {
 		cvs_treat_error(recv, NULL);
 		cvs_connection_release(send, recv);
-		return NULL; /* TODO care for malloced memory */
+		return EIO;
 	      }
 	  
 	    revision = (ptr += 9);
@@ -163,7 +164,7 @@ cvs_tree_read(const char *root_dir)
 	      {
 		perror(PACKAGE);
 		cvs_connection_release(send, recv);
-		return NULL; /* pray for cvsfs to survive! */
+		return ENOMEM; /* pray for cvsfs to survive! */
 	      }
 
 	    entry->name = strdup(filename);
@@ -186,7 +187,7 @@ cvs_tree_read(const char *root_dir)
 		free(entry);
 
 		cvs_connection_release(send, recv);
-		return NULL; /* pray for cvsfs to survive! */
+		return ENOMEM; /* pray for cvsfs to survive! */
 	      }
 
 	    entry->revision->id = strdup(revision);
@@ -201,15 +202,12 @@ cvs_tree_read(const char *root_dir)
 	default:
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return NULL; /* TODO this probably never happens, but care
-			* for allocated memory anyways
-			*/
+	  return EIO; 
 	}
     }
 
   cvs_connection_release(send, recv);
-  return NULL; /* got eof, this shouldn't happen. 
-		* free allocated memory anyway. */
+  return EIO;
 }
 
 

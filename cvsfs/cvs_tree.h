@@ -16,9 +16,11 @@
 
 #include <stdio.h>
 
-/* read the whole file and directory tree of the specified module (root_dir).
- * RETURN: pointer to the root directory, NULL on error
+/* read the whole file and directory tree of the module specified in config
+ * structure.  The tree is stored in **ptr_to_rootnode, make sure
+ * *ptr_to_rootnode is NULL on first call.
+ * RETURN: 0 on success
  */
-struct netnode *cvs_tree_read(const char *root_dir);
+error_t cvs_tree_read(struct netnode **ptr_to_rootnode); 
 
 #endif /* CVS_TREE_H */

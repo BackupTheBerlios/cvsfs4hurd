@@ -96,7 +96,7 @@ volatile struct mapped_time_value *cvsfs_maptime;
 int
 main(int argc, char **argv)
 {
-  struct netnode *rootdir;
+  struct netnode *rootdir = NULL;
   io_statbuf_t ul_stat;
   mach_port_t bootstrap, ul_node;
   struct argp argp =
@@ -127,7 +127,7 @@ main(int argc, char **argv)
   netfs_init();
 
   /* download initial root directory */
-  if(! (rootdir = cvs_tree_read(config.cvs_module)))
+  if(cvs_tree_read(&rootdir))
     {
       fprintf(stderr, PACKAGE ": unable to get initial cvs tree, stop.\n");
       return 1;
