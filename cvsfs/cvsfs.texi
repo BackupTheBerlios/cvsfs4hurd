@@ -1,0 +1,300 @@
+\input texinfo @c -*- texinfo -*- 
+@c $Id: cvsfs.texi,v 1.1 2004/10/08 18:59:04 stesie Exp $
+@c %**start of header
+@setfilename cvsfs.info
+@include version.texi
+@settitle @sc{cvsfs} virtual filesystem translator
+@syncodeindex pg cp
+@c %**end of header
+
+
+
+@copying
+Copyright @copyright{} 2004 Stefan Siegl, Germany
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Free Documentation License, Version 1.1
+or any later version published by the Free Software Foundation;
+with no Invariant Sections, with no
+Front-Cover Texts, and with no Back-Cover Texts.
+A copy of the license is included in the section entitled ``GNU
+Free Documentation License''.
+@end quotation
+@end copying
+
+@titlepage
+@title @sc{cvsfs4hurd}
+@subtitle (virtual CVS filesystem translator for the GNU Hurd)
+@subtitle for version @value{VERSION}, @value{UPDATED}
+@author Stefan Siegl (@email{ssiegl@@gmx.de})
+
+@page
+@vskip 0pt plus 1filll
+
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top cvsfs virtual filesystem translator
+@end ifnottex
+
+This manual documents version @value{VERSION} of the @sc{cvsfs}
+virtual filesystem translator.
+
+
+@insertcopying
+
+@menu
+* Overview::                    On how to get in touch.
+* Authentication::              Using username/password to log in.
+* Remote Shell Connections::    Using rsh or ssh to connect to the cvs host.
+* Copying This Manual::
+* Index::
+@end menu
+
+@c ---------------------------------------------------------------------------
+@node Overview
+@chapter Overview
+@cindex Overview
+
+This chapter is for people who have never heard of or at least used @sc{cvsfs},
+and perhaps have not get in touch with version control software before.
+
+If you are already familiar with CVS you probably will not feel 
+uncomfortable with @sc{cvsfs} right from the start.
+
+@menu
+* What is cvsfs?::                    What you can do with cvsfs
+* What is cvsfs not?::                Things you cannot solve with cvsfs
+* Sample::                            Tour of basic usage
+@end menu
+
+@c ---------------------------------------------------------------------------
+@node What is cvsfs?
+@section What is cvsfs?
+@cindex What is cvsfs?
+@cindex Introduction to cvsfs
+
+@sc{cvsfs} is a so called translator for the GNU Hurd operating system, 
+enabling to bind remotely located CVS modules right into your local
+file system tree. It allows to view version controlled files right
+the same way you look at ordinary (locally stored) ones. 
+
+This software is still being developed, therefore please do not expect
+a program without any bugs. 
+
+Mounting a CVS module allows you to view your (or others') version controlled
+files with the programs you are used to. This is, you can view any file,
+checked into CVS, using your favourite text editor (aka emacs) without
+having to check the
+whole module out.  Thus you save the time and network bandwidth necessary
+to do a full checkout as @sc{cvsfs} downloads the directory tree only. 
+Each file's content is only downloaded if necessary, i.e. if you try to read
+it.
+
+@c TODO if cvsfs is little older, perhaps mention it's history
+
+@cindex Source, getting cvsfs sources
+You can get @sc{cvsfs} in a variety of ways, including
+free download from the internet.  For more information on
+downloading @sc{cvsfs} and other @sc{cvsfs} topics, see:
+
+@example
+@url{http://cvsfs4hurd.berlios.de/}
+@end example
+
+@cindex Mailing list
+@cindex List, mailing list
+There is a mailing list @email{cvsfs4hurd-devel@@lists.berlios.de},
+devoted to @sc{cvsfs}.  To subscribe or unsubscribe write to
+@email{cvsfs4hurd-devel-request@@lists.berlios.de}. 
+The mailing list isn't thought to be a list for developer discussion
+only, even so the name states so.  It's just due to the quite low 
+traffic that there is no separate users discussion list.
+
+@c ---------------------------------------------------------------------------
+@node What is cvsfs not?
+@section What is cvsfs not?
+@cindex What is cvsfs not?
+
+@sc{cvsfs} can do a lot of things for you, but it does
+not try to be everything for everyone.
+
+@table @asis
+@cindex Write support
+@item @sc{cvsfs} does not support writing.
+
+Though you might want it to have write support I consider this
+feature useless.  What is the advantage of being able to change
+files in the cvsfs virtual filesystem, having to write a log message
+to some obscure target?
+
+I think it would not make things easier compared to the common
+@code{cvs ci}?
+
+@end table
+
+@c ---------------------------------------------------------------------------
+@node Sample
+@section Sample
+@cindex Example of a work-session
+@cindex Getting started
+
+As a way of introducing @sc{cvsfs}, we'll go through a
+typical work-session using @sc{cvsfs}.  Suppose you
+want to view the CVS repository of wsdebug, a debugger for
+the whitespace programming language.
+
+@cindex Translators, concept
+@cindex Translators, setting up
+@cindex settrans
+The first thing to
+understand is the GNU Hurd's concept of translators. A so called
+translator is a userspace program, translating e.g. network stored
+data to local filesystem nodes.  Those translators are set up using
+@code{settrans}.
+
+Assuming you have created an empty directory called wsdebug-src,
+you need to enter
+
+@example
+settrans -a wsdebug-src cvsfs cvs.berlios.de /cvsroot/wsdebug wsdebug
+@end example
+
+to set up an active translator, mapping the CVS module 
+@code{wsdebug} from below @code{/cvsroot/wsdebug} stored on
+@code{cvs.berlios.de} to the specified local directory.
+
+Now you can enter and browse the wsdebug-src directory the way 
+you are used to. For example you can @code{cd wsdebug-src}, do
+a @code{ls} to show which files are available and choose one file
+to open with the text editor of your choice. You can even use
+graphical file managers like @code{xfm} to view the directory tree.
+
+@cindex Translators, killing
+@cindex getting rid of cvsfs instance
+@cindex Translators, getting rid
+In order to get rid of the translator leave the wsdebug-src/
+directory tree and enter
+
+@example
+settrans -g wsdebug-src
+@end example
+
+@c ---------------------------------------------------------------------------
+@node Authentication
+@chapter Authentication
+@cindex Authentication
+@cindex Username
+@cindex Password, supplied when authenticating
+
+@sc{cvsfs} by default uses the omnipresent CVS pserver protocol to
+connect to the specified CVS remote host.  This protocol requires
+to supply login information (thus user-id and password) right after
+connecting.
+
+@cindex .cvspass file
+@cindex anonymous
+@cindex login, username
+@cindex login, anonymously
+As you probably will use @sc{cvsfs} to mainly browse 
+CVS repositories of open source projects you are interested in,
+anonymously, @sc{cvsfs} defaults to supply @code{anonymous} as
+your user-id.  If not otherwise specified in your @code{.cvspass} file it
+will use an empty password to log in.  This is what you probably want,
+if you connect to repositories of sourceforge.net or the quite similar
+developer.berlios.de.  However this is not what you might expect, if
+you are very familiar with CVS which tends to supply your username, if
+you don't tell it to use @code{anonymous}!
+
+If you want to connect to a repository where you need to supply a
+real user-id, you need to supply the @option{--user} option, followed
+by the username of your choice.
+
+Before establishing the host connection @sc{cvsfs} tries to scan your
+@code{.cvspass} file for the password to be used when trying to 
+authenticate.  If it cannot find the password file or the file simply
+does not tell a suitable password, the translator will bark
+and try logging in without a password (probably failing, if you
+are not using anonymous login credentials).
+
+@cindex homedir
+@cindex /etc/passwd
+@sc{cvsfs} looks for a @code{.cvspass} file in your home directory (as
+specified in @code{/etc/passwd} file) by default.  If you - for whatever reason - want
+it to read from an other password file,  supply it's directory using
+the @option{--homedir} option.
+
+@cindex Password, adding to .cvspass
+If there is no entry for the CVSROOT of choice in your passwo<rd file,
+simply use CVS' @code{login} command.  For example, if you would like
+to log into cvsfs4hurd's CVS repository using my credentials, do
+something like that:
+
+@example
+$ cvs -d:pserver:stesie@@cvs.berlios.de:/cvsroot/cvsfs4hurd login
+CVS password: <password>
+$ settrans -a cvsfs-src /sbin/cvsfs --user stesie \
+           cvs.berlios.de /cvsroot/cvsfs4hurd cvsfs
+@end example
+
+@c ---------------------------------------------------------------------------
+@node Remote Shell Connections
+@chapter Remote Shell Connections
+@cindex Remote Shell Connections
+@cindex pserver
+@cindex CVS pserver
+@cindex ssh
+@cindex rsh
+@cindex Shell Client
+@cindex Remote Shell Client (rsh)
+
+@sc{cvsfs} by default uses the pserver protocol to
+connect to the specified CVS remote host.  This is what you probably
+want to use, if you are not the developer of the project on which
+sources you would like to glance at.  If you want to use @sc{cvsfs} to
+view the source of a sourceforge hosted project you are contributing
+to, you may want to use the @code{ssh} remote shell client to connect
+(because the anonymous cvs server is commonly some hours behind, so
+you will not see most recent changes).
+
+In order to tell @sc{cvsfs} that you want a remote shell client to be used,
+simply supply the @option{--remote} option when calling @code{settrans}.
+However @sc{cvsfs} tends to use the ancient @code{rsh} shell client,
+just like CVS does.  If you want to use @code{ssh}, you need to supply
+@option{--remote=ssh} (or abbreviated: @option{-rssh}) when launching.
+
+@sc{cvsfs} will use @code{anonymous} as the user-id to the remote
+shell client, if you do not specify your real id using
+@option{--user} option, therefore be careful when you are too much
+used to using cvs.
+
+@cindex Password, ssh not asking
+@cindex authorized_keys
+Please consider that ssh, or whichever remote shell client you use,
+cannot ask you for your password, since translators are not connected
+to a terminal on the Hurd.  Therefore you need to configure it to
+put you straight to the command prompt when calling it something like 
+@code{ssh -l USERNAME HOSTNAME}.  To allow this, you probably want to
+create a @code{$HOME/.ssh/authorized_keys} file on the remote host.
+
+@c ---------------------------------------------------------------------------
+@node Copying This Manual
+@appendix Copying This Manual
+
+@menu
+* GNU Free Documentation License::    License for copying this manual.
+@end menu
+
+@include fdl.texi
+
+@c ---------------------------------------------------------------------------
+@node Index
+@unnumbered Index
+
+@printindex cp
+@bye

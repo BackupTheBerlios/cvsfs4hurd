@@ -18,5 +18,6 @@ cvsfs_SOURCES= \
 	       node.c node.h \
 	       tcpip.c tcpip.h 
 man_MANS=cvsfs.1
+info_TEXINFOS = cvsfs.texi
 
 EXTRA_DIST=
