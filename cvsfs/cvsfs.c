@@ -55,14 +55,18 @@ static const struct argp_child argp_children[] =
 
 
 /* documentation, written out when called with either --usage or --help */
-const char *argp_program_version = VERSION;
+const char *argp_program_version = "cvsfs (" PACKAGE ") " VERSION "\n"
+"Written by Stefan Siegl\n\n"
+"Copyright (C) 2004, Stefan Siegl <ssiegl@gmx.de>, Germany\n"
+"This is free software; see the source for copying conditions.  There is NO\n"
+"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+"\n";
 static char *args_doc = "HOSTNAME CVSROOT MODULE";
 static char *doc = "cvs filesystem translator for the Hurd.\v"
-"Please mind the cvsfs is currently very much alpha-state code, therefore "
-"please do not expect a translator working perfectly from the first "
-"second on.";
-
-
+"Please mind that " PACKAGE " is currently very much in alpha alike state, "
+"therefore please do not expect a translator working perfectly right now.\n\n"
+PACKAGE " translator will show the remotely located CVS module 'MODULE' "
+"from host 'HOSTNAME' as it's files were located right on your computer.";
 
 /* options our translator understands, to be used by libc argp */
 enum 
