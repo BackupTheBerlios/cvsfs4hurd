@@ -65,9 +65,6 @@ FILE *
 cvs_connect(cvsfs_config *config)
 {
   FILE *cvs_handle = NULL;
-  char buf[128]; /* we only need to read something like I LOVE YOU
-		  * or some kind of error message (E,M)
-		  */
 
   /* look whether we've got a cached connection available */
   spin_lock(&cvs_cached_conn_lock);
@@ -87,23 +84,6 @@ cvs_connect(cvsfs_config *config)
 
   if(! cvs_handle)
     return NULL; /* something went wrong, we already logged, what did */
-
-  /* okay, now watch out for the server's answer,
-   * in the hope, that it loves us
-   */
-  if(! fgets(buf, sizeof(buf), cvs_handle))
-    {
-      perror(PACKAGE);
-      fclose(cvs_handle);
-      return NULL;
-    }
-
-  if(strncmp(buf, "I LOVE YOU", 10))
-    {
-      cvs_treat_error(cvs_handle, buf);
-      fclose(cvs_handle);
-      return NULL;
-    }
 
   /* still looks good. inform server of our cvs root */
   fprintf(cvs_handle, "Root %s\n", config->cvs_root);
