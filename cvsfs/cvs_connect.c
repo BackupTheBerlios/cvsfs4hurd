@@ -112,8 +112,7 @@ cvs_connect(FILE **send, FILE **recv)
 
   if(cvs_handshake(*send, *recv))
     {
-      fclose(*send);
-      fclose(*recv);
+      cvs_connection_kill(*send, *recv);
       return EIO;
     }
 
@@ -132,11 +131,9 @@ cvs_connection_release(FILE *send, FILE *recv)
   spin_lock(&cvs_cached_conn_lock);
 
   if(cvs_cached_conn.send)
-    {
-      /* there's already a cached connection, forget about ours */
-      fclose(send);
-      fclose(recv);
-    }
+    /* there's already a cached connection, forget about ours */
+    cvs_connection_kill(send, recv);
+
   else
     {
       cvs_cached_conn.send = send;

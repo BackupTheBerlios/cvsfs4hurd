@@ -72,7 +72,8 @@ cvs_pserver_connect(FILE **send, FILE **recv)
     {
       perror(PACKAGE);
       fclose(*send);
-      fclose(*recv);
+      /* fclose(*recv);
+       * don't close *recv, it's just another reference to *send!! */
       return EIO;
     }
 
@@ -80,7 +81,7 @@ cvs_pserver_connect(FILE **send, FILE **recv)
     {
       cvs_treat_error(*recv, buf);
       fclose(*send);
-      fclose(*recv);
+      /* fclose(*recv); */
       return EPERM;
     }
 
