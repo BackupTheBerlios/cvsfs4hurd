@@ -1,7 +1,7 @@
 /**********************************************************
  * cvs_ext.c
  *
- * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Publice License,
@@ -63,13 +63,26 @@ cvs_ext_connect(FILE **send, FILE **recv)
 	  exit(1);
 	}
 
-      snprintf(port, sizeof(port), "%d",
-	       config.cvs_port ? config.cvs_port : 22);
+      if(config.cvs_mode == EXT) 
+	{
+	  snprintf(port, sizeof(port), "%d",
+		   config.cvs_port ? config.cvs_port : 22);
 
-      execlp(config.cvs_shell_client, config.cvs_shell_client,
-	     "-p", port,
-	     "-l", config.cvs_username, config.cvs_hostname,
-	     "--", "cvs", "server", NULL);
+	  execlp(config.cvs_shell_client, config.cvs_shell_client,
+		 "-p", port,
+		 "-l", config.cvs_username, config.cvs_hostname,
+		 "--", "cvs", "server", NULL);
+	}
+      else if(config.cvs_mode == LOCAL)
+	{
+	  execlp("cvs", "cvs", "server", NULL);
+	}
+      else
+	{
+	  fprintf(stderr, PACKAGE ": damn, this line was not reached.\n");
+	  abort();
+	}
+
       exit(1);
     }
 

@@ -1,5 +1,5 @@
 \input texinfo @c -*- texinfo -*- 
-@c $Id: cvsfs.texi,v 1.4 2004/10/09 11:42:45 stesie Exp $
+@c $Id: cvsfs.texi,v 1.5 2005/03/19 18:36:22 stesie Exp $
 @c %**start of header
 @setfilename cvsfs.info
 @include version.texi
@@ -10,7 +10,7 @@
 
 
 @copying
-Copyright @copyright{} 2004 Stefan Siegl, Germany
+Copyright @copyright{} 2004, 2005 by Stefan Siegl, Germany
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document
@@ -52,6 +52,7 @@ virtual filesystem translator.
 * Overview::                    On how to get in touch.
 * Authentication::              Using username/password to log in.
 * Remote Shell Connections::    Using rsh or ssh to connect to the cvs host.
+* Browsing Local Repositories:: Browsing a local cvs repository with cvsfs
 * File Status Information::     File's status and access permissions.
 * Write Support::               On writing to cvsfs mounted modules.
 * Copying This Manual::
@@ -293,6 +294,33 @@ to a terminal on the Hurd.  Therefore you need to configure it to
 put you straight to the command prompt when calling it something like 
 @code{ssh -l USERNAME HOSTNAME}.  To allow this, you probably want to
 create a @code{$HOME/.ssh/authorized_keys} file on the remote host.
+
+@c ---------------------------------------------------------------------------
+@node Browsing Local Repositories
+@chapter Browsing Local Repositories
+@cindex Browsing Local Repositories
+
+Apart from using @sc{cvsfs} to browse remotely located CVS repositories,
+using either pserver protocol or the :ext: method, you may even use it
+to browse CVS repositories which are located on your computer or
+otherwise mounted into your filesystem. 
+
+In order to make @sc{cvsfs} behaving this way, either start it with
+@code{localhost} as the @option{HOSTNAME} or specify the
+@option{--local} option.  Mind that you must not omit the
+@option{HOSTNAME} argument in any case, even the latter one.  The argument is
+just not going to be evaluated if the @option{--local} option is present.
+
+As an exampe, if you would like, to browse the CVSROOT pseudo module
+of your local host's CVS repository (located at
+@code{/var/lib/cvs}) type something like this:
+
+@example
+$ settrans -a test-node/ /sbin/cvsfs --local - /var/lib/cvs CVSROOT
+@end example
+
+You may now enter the directory @code{test-node/}, which allows you to
+browse the CVSROOT module.
 
 @c ---------------------------------------------------------------------------
 @node File Status Information

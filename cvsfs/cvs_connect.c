@@ -1,7 +1,7 @@
 /**********************************************************
  * cvs_connect.c
  *
- * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Publice License,
@@ -114,6 +114,7 @@ cvs_connect_fresh(FILE **send, FILE **recv)
       break;
 
     case EXT:
+    case LOCAL:
       err = cvs_ext_connect(send, recv);
       break;
     }

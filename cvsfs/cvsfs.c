@@ -57,7 +57,7 @@ static const struct argp_child argp_children[] =
 /* documentation, written out when called with either --usage or --help */
 const char *argp_program_version = "cvsfs (" PACKAGE ") " VERSION "\n"
 "Written by Stefan Siegl\n\n"
-"Copyright (C) 2004,05 Stefan Siegl <ssiegl@gmx.de>, Germany\n"
+"Copyright (C) 2004, 2005 Stefan Siegl <ssiegl@gmx.de>, Germany\n"
 "This is free software; see the source for copying conditions.  There is NO\n"
 "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 "\n";
@@ -75,6 +75,7 @@ enum
     OPT_USER = 'u',
     OPT_HOMEDIR = 'h',
     OPT_REMOTE = 'r',
+    OPT_LOCAL = 'l',
     OPT_NOSTATS = 'n',
     OPT_DEBUG = 'd',
 #ifdef HAVE_LIBZ
@@ -92,6 +93,8 @@ static const struct argp_option cvsfs_options[] =
       "path of your home directory (= path to .cvspass file)", 0 },
     { "remote", OPT_REMOTE, "CLIENT", OPTION_ARG_OPTIONAL,
       "connect through :ext: remote shell client CLIENT to cvs host", 0 },
+    { "local", OPT_LOCAL, 0, 0,
+      "show files from local cvs repository", 0 },
     { "nostats", OPT_NOSTATS, 0, 0,
       "do not download revisions to aquire stats information", 0 },
     { "debug", OPT_DEBUG, "FILE", OPTION_ARG_OPTIONAL,
@@ -245,12 +248,21 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
 	}
       break;
 
+    case OPT_LOCAL:
+      config.cvs_mode = LOCAL;
+      break;
+
     case ARGP_KEY_ARGS:
       if(state->argc - state->next != 3)
 	argp_usage(state);
       else
 	{
-	  config.cvs_hostname = strdup(state->argv[state->next ++]);
+	  if(strcmp(state->argv[state->next], "localhost"))
+	    config.cvs_hostname = strdup(state->argv[state->next]);
+	  else
+	    config.cvs_mode = LOCAL;
+
+	  state->next ++;
 	  config.cvs_root = strdup(state->argv[state->next ++]);
 	  config.cvs_module = strdup(state->argv[state->next ++]);
 	}

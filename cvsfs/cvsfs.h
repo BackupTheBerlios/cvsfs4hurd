@@ -1,5 +1,5 @@
 /**********************************************************
- * cvsfs_config.h
+ * cvsfs.h
  *
  * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
@@ -22,7 +22,7 @@ extern volatile struct mapped_time_value *cvsfs_maptime;
 
 
 typedef struct {
-  enum { PSERVER, EXT } cvs_mode;
+  enum { PSERVER, EXT, LOCAL } cvs_mode;
   char *cvs_shell_client; /* program to use for :ext: connection */
 
   char *cvs_hostname;
