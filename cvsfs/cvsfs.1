@@ -1,0 +1,73 @@
+.TH CVSFS "1" "October 2004" "cvsfs (cvsfs4hurd) 0.1" "User Commands"
+.SH NAME
+cvsfs \- mount remotely located cvs module
+.SH SYNOPSIS
+.B cvsfs
+[\fIOPTION\fR...] \fIHOSTNAME CVSROOT MODULE\fR
+.SH DESCRIPTION
+CVS filesystem translator for the GNU Hurd, allowing to mount the remotely
+located CVS module MODULE right into your local filesystem. The version
+controlled files will look like ordinary (local) ones to you afterwards.
+.PP
+Supply the hostname of the CVS pserver as HOSTNAME, the root CVS directory
+(the one, where CVS' CVSROOT directory is located in) as CVSROOT.
+.TP
+\fB\-h\fR, \fB\-\-homedir\fR=\fIPATH\fR
+path of your home directory (the directory where cvsfs
+shall look for the .cvspass file, which is used to find
+out which password to use to authenticate)
+.TP
+\fB\-p\fR, \fB\-\-port\fR=\fIPORT\fR
+port to connect to on given host (if not using
+standard port, for pserver 2401)
+.TP
+\fB\-r\fR, \fB\-\-remote\fR[=\fICLIENT\fR]
+connect to CVS server using the remote shell client CLIENT.
+If CLIENT is omitted 'rsh' will be used. If you don't specify 
+a --remote option at all, pserver protocol will be used.
+
+Make sure that the shell client you want to use logs in 
+automatically since translators (and thus cvsfs translator)
+don't have a connected terminal.  Therefore you will not be
+able to enter a password.
+.TP
+\fB\-u\fR, \fB\-\-user\fR=\fIUSERNAME\fR
+username to supply to cvs host when logging in. 'anonymous'
+will be used if you don't specify one.  If you want your
+login name to be used, you have to specify that using --user argument
+(unless you logged in as 'anonymous' though)
+.TP
+-?, \fB\-\-help\fR
+Write out some help text
+.TP
+\fB\-\-usage\fR
+Give a short usage message
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print program version
+.PP
+Mandatory or optional arguments to long options are also mandatory or optional
+for any corresponding short options.
+.PP
+Please mind that cvsfs4hurd is currently very much in alpha alike state,
+therefore please do not expect a translator working perfectly right now.
+.PP
+.SH AUTHOR
+Written by Stefan Siegl
+.SH COPYRIGHT
+Copyright \(co 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+.SH "SEE ALSO"
+The full documentation for
+.B cvsfs
+is maintained as a Texinfo manual.  If the
+.B info
+and
+.B cvsfs
+programs are properly installed at your site, the command
+.IP
+.B info cvsfs
+.PP
+should give you access to the complete manual.

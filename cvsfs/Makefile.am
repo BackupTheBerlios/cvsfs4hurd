@@ -17,5 +17,6 @@ cvsfs_SOURCES= \
 	       netfs.c \
 	       node.c node.h \
 	       tcpip.c tcpip.h 
+man_MANS=cvsfs.1
 
 EXTRA_DIST=
