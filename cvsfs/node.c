@@ -68,7 +68,7 @@ cvsfs_make_node(struct netnode *nn)
   node->nn_stat.st_nlink = 1;
   node->nn_stat.st_uid = stat_template.uid;
   node->nn_stat.st_gid = stat_template.gid;
-  node->nn_stat.st_size = 0; /* TODO, find a way to figure out size of file */
+  node->nn_stat.st_size = 0;
   node->nn_stat.st_author = stat_template.author;
 
   if(! nn->revision)
@@ -90,6 +90,20 @@ cvsfs_make_node(struct netnode *nn)
     }
   else
     {
+      if(nn->revision->contents)
+	{
+	  node->nn_stat.st_mode = nn->revision->perm;
+	  node->nn_stat.st_size = nn->revision->length;
+
+	  node->nn_stat.st_atime =
+	    node->nn_stat.st_mtime =
+	    node->nn_stat.st_ctime = nn->revision->time;
+
+	  node->nn_stat.st_atime_usec =
+	    node->nn_stat.st_mtime_usec =
+	    node->nn_stat.st_ctime_usec = 0;
+	}
+
       /* well, we're creating a new node for a file ... */
       node->nn_stat.st_mode |= S_IFREG;
 
