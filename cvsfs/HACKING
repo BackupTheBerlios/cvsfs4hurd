@@ -1,0 +1,75 @@
+	you want to use emacs' -*- outline -*- mode, to read this ...
+
+* first things first
+** you're welcome to participate in progressing cvsfs4hurd
+   if you got questions concerning it, don't hesitate but send me
+   a mail to ssiegl@gmx.de
+
+** cvsfs4hurd's code is real crap!
+*** do you think so? please tell me what you don't like
+    cvsfs4hurd is actually my first project, related to the
+    Hurd and actually my first step towards OS-near programming.
+
+** cvs_*.[ch] files should stay GNU Hurd independant
+   that is, please use POSIX compatible code in those files to keep those
+   portable. The other stuff (cvsfs.c, node.c, netfs.c at the time of this
+   writing) is OS (aka Hurd) specific and probably needs to completely be
+   rewritten when aiming to port to some other platform.
+
+** source code documentation
+   all functions in all of cvsfs4hurd's files should be well documented,
+   this unfortunately isn't the case currently.  if you want to, you may
+   supply some however.  when implementing new stuff, just write it first,
+   so that won't happen in future ;)
+
+* todos
+** available stuff left to fix
+*** urgent
+**** add command line parameter to specify cvs user
+     the password however shouldn't be supplyable through command line,
+     since it would be readable using ps Aux.  read from $HOME/.cvspass
+     instead.
+
+**** correctly handle timestamps
+***** update atimes where necessary
+
+***** keep timestamp in netnode
+      to prevent files from getting assigned a new timestamp when it's 
+      node was freed, after all references were removed.  perhaps assigning
+      time of translator startup or underlying node's mtime is worth 
+      considering.
+
+***** use timestamp from cvs repository
+      how to find that out in a cheap way? rdiff doesn't tell, perhaps
+      status does?? exporting is little bitty tooo expensive, I guess ...
+
+*** things that can wait
+**** show correct filesizes in stats
+     ... not just a plain boring 'zero'. However to find out the files's
+     sizes we probably have to download the file itself. Look for a way,
+     cvs tells the filesize itself ...
+
+** new features
+   these are somewhat in order of urgency ...
+
+*** support cvs access over ssh (ext), not only pserver
+
+*** write support
+**** try layering unionsfs/shadowfs on top
+     in order to e.g. 'make' in a source directory.  we probably have to fix
+     timestamp handling, in order to make use of make, don't we?
+
+     write some documentation on that.
+
+**** supply <filenode>/commit node
+     if user writes to there, use this message as loginfo
+
+*** make loginfo accessible some way
+    (<filenode>/history or something)
+
+*** allow revision access like Linux' cvsfs does
+    (using @@ appendixes)
+
+
+jupp, enough for the time being ...
+$Id: HACKING,v 1.1 2004/09/25 20:47:46 stesie Exp $
