@@ -241,8 +241,7 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   new->revision = NULL; /* mark as a directory */
   new->fileno = next_fileno ++;
 
-  /* rwlock_init(&new);
-   * not necessary, we don't have to lock, to check for revision == NULL! */
+  rwlock_init(&new->lock);
   
   if(parent)
     parent->child = new;

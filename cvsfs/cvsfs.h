@@ -96,11 +96,16 @@ struct netnode {
   /* inode number, assigned to this netnode structure */
   unsigned int fileno;
 
+  /* pointer to node structure, assigned to this netnode */
+  struct node *node;
+
   /* locking mechanism for the netnode. this needs to be held whenever touching
    * the revisions tree (the linking), access to revision to check whether it
    * is NULL (and therefore a directory) doesn't need to be locked.
    * for the revision structure itself there
    * is a separate lock inside each struct revision.
+   *
+   * furthermore access to node pointer must be locked.
    */
   struct rwlock lock;
 };

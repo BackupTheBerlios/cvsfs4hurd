@@ -336,7 +336,25 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	if(! strcmp(nn->name, name)) 
 	  {
 	    err = 0; /* hey, we got it! */
-	    *node = cvsfs_make_node(nn);
+
+	    rwlock_reader_lock(&nn->lock);
+
+	    if(nn->node)
+	      {
+		*node = nn->node;
+		netfs_nref(nn->node);
+		rwlock_reader_unlock(&nn->lock);
+	      }
+	    else
+	      {
+		/* unlock netnode, since cvsfs_make_node needs a lock
+		 * to allow write access 
+		 */
+		rwlock_reader_unlock(&nn->lock);
+
+		*node = cvsfs_make_node(nn);
+	      }
+
 	    break;
 	  }
     }
@@ -658,6 +676,13 @@ netfs_get_dirents (struct iouser *cred, struct node *dir,
 void
 netfs_node_norefs (struct node *node)
 {
+  /* the node will be freed, therefore our nn->node pointer will not
+   * be valid any longer, therefore reset it 
+   */
+  rwlock_writer_lock(&node->nn->lock);
+  node->nn->node = NULL;
+  rwlock_writer_unlock(&node->nn->lock);
+
   if(node->nn->revision && !node->nn->parent)
     /* node is a virtual node, therefore we need to free the netnode */
     free(node->nn);
