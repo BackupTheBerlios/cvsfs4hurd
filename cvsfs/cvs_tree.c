@@ -27,7 +27,7 @@
 static struct netnode *cvs_tree_enqueue(struct netnode *, const char *);
 
 /* next file number (aka inode) we will assign */
-static unsigned int next_fileno = 1;
+volatile unsigned int next_fileno = 1;
 
 /* netnode *cvs_tree_read
  *
