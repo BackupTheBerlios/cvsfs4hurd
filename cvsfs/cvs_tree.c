@@ -251,6 +251,7 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   new->parent = parent;
   new->revision = NULL; /* mark as a directory */
   new->fileno = next_fileno ++;
+  new->node = NULL;
 
   rwlock_init(&new->lock);
   
@@ -336,6 +337,7 @@ cvs_tree_enqueue_file(struct netnode *cwd,
   entry->child = NULL;
   entry->parent = cwd;
   entry->fileno = next_fileno ++;
+  entry->node = NULL;
 
   /* create lock entry for our new netnode, as it is not linked
    * to somewhere and this is the only thread to update tree info,
