@@ -87,12 +87,7 @@ static const struct argp_option cvsfs_options[] =
     { NULL, 0, NULL, 0, NULL, 0 }
   };
 
-
-
 volatile struct mapped_time_value *cvsfs_maptime;
-
-/* rwlock from cvs_connect.c we've got to initialize */
-extern spin_lock_t cvs_cached_conn_lock;
 
 int
 main(int argc, char **argv)
@@ -108,8 +103,7 @@ main(int argc, char **argv)
       NULL, NULL
     };
 
-  /* first things first: initialize global locks we use */
-  spin_lock_init(&cvs_cached_conn_lock);
+  cvs_connect_init();
 
   /* stderr = fopen("cvsfs.log", "w");
    * setvbuf(stderr, NULL, _IONBF, 0);

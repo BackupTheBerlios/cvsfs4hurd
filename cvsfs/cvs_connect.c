@@ -17,6 +17,9 @@
 
 #include <string.h>
 #include <spin-lock.h>
+#include <signal.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "cvsfs.h"
 #include "cvs_connect.h"
@@ -34,6 +37,24 @@ static int cvs_handshake(FILE *cvs_handle);
  */
 static FILE *cvs_cached_conn = NULL;
 spin_lock_t cvs_cached_conn_lock;
+time_t cvs_cached_conn_release_time = 0;
+
+/* callback function we install for SIGALRM signal */
+static void cvs_connect_sigalrm_handler(int);
+
+/* cvs_connect_init
+ *
+ * initialize cvs_connect stuff
+ */
+void
+cvs_connect_init(void)
+{
+  /* first things first: initialize global locks we use */
+  spin_lock_init(&cvs_cached_conn_lock);
+
+  signal(SIGALRM, cvs_connect_sigalrm_handler);
+  alarm(30);
+}
 
 /* cvs_connect
  *
@@ -112,7 +133,10 @@ cvs_connection_release(FILE *cvs_handle)
     fclose(cvs_handle);
 
   else
-    cvs_cached_conn = cvs_handle;
+    {
+      cvs_cached_conn = cvs_handle;
+      cvs_cached_conn_release_time = time(NULL);
+    }
 
   spin_unlock(&cvs_cached_conn_lock);
 }
@@ -219,4 +243,25 @@ cvs_treat_error(FILE *cvs_handle, char *msg)
   while((msg = fgets(buf, sizeof(buf), cvs_handle)));
 
   /* fprintf(stderr, "leaving treat_error, due to received eof\n"); */
+}
+
+
+
+/* cvs_connect_sigalrm_handler
+ * 
+ * callback function we install for SIGALRM signal
+ *   -> shutdown cvs server connection if idle for more than 90 seconds
+ */
+static void 
+cvs_connect_sigalrm_handler(int signal) 
+{
+  spin_lock(&cvs_cached_conn_lock);
+  if(cvs_cached_conn
+     && (time(NULL) - cvs_cached_conn_release_time > 90))
+    {
+      /* okay, connection is rather old, drop it ... */
+      fclose(cvs_cached_conn);
+      cvs_cached_conn = NULL;
+    }
+  spin_unlock(&cvs_cached_conn_lock);
 }

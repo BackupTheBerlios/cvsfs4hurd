@@ -17,6 +17,10 @@
 #include <stdio.h>
 #include "cvsfs.h"
 
+/* initialize cvs_connect stuff, this must be called before using cvs_connect
+ */
+void cvs_connect_init(void);
+
 /* Try connecting to the cvs host specified in 'config'. Return a
  * line-buffer libc FILE* handle on success, NULL if something failed.
  */

@@ -29,15 +29,9 @@ do, when and how ...
 ** available stuff left to fix
 *** urgent
 **** consider locks here and there
-***** lock cvs connection
-      we should lock the connection to the cvs host, to keep two threads
-      from simultaneously requesting files ...
 ***** don't return another nref in cvsfs_make_node
       but create a new node in any case, else we'd need to do locking which
       probably costs much more than it brings us ...
-**** several idle timeouts
-     we probably shouldn't hold a connection to the cvs host, all time our
-     filesystem is mounted.  perhaps the user just forgot to settrans -g??
 **** reread whole directory tree after some amount of time passed by
      let's say every ~30 min. or so? make sure to keep old netnodes and
      just extend those as necessary - don't ever drop them, 'cause there
@@ -88,4 +82,4 @@ do, when and how ...
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.2 2004/09/26 11:25:11 stesie Exp $
+$Id: HACKING,v 1.3 2004/09/26 12:27:12 stesie Exp $
