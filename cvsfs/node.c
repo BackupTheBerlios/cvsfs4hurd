@@ -25,6 +25,10 @@
 #include <assert.h>
 #include <stdio.h>
 
+/* next file number (aka inode) we will assign */
+extern volatile unsigned int next_fileno;
+
+
 /* cvsfs_make_node
  *
  * create a struct node* for the specified netnode 'nn'. 
@@ -39,7 +43,6 @@ cvsfs_make_node(struct netnode *nn)
       /* there already is a node structure, just return another reference
        * to this one, instead of wasting memory for yet another one
        */
-
       mutex_lock(&nn->node->lock);
       netfs_nref(nn->node);
       mutex_unlock(&nn->node->lock);
@@ -100,4 +103,44 @@ cvsfs_make_node(struct netnode *nn)
 
   return (nn->node = node);
 }
-    
+
+
+
+struct node *
+cvsfs_make_virtual_node(struct netnode *nn, struct revision *rev)
+{
+  struct node *node;
+  struct netnode *new_nn;
+
+  if(! nn->revision) 
+    return NULL; /* we don't create virtual nodes for directories */
+
+  /* we need a virtual netnode structure, pointing to the revision
+   * of choice ...
+   */
+  new_nn = malloc(sizeof(*new_nn));
+
+  if(! new_nn)
+    return NULL;
+
+  new_nn->sibling = NULL;
+  new_nn->parent = NULL;
+  new_nn->node = NULL; /* will be assigned by cvsfs_make_node */
+  new_nn->name = rev->id;
+  new_nn->revision = rev;
+  new_nn->fileno = next_fileno ++;
+
+  /* keep a pointer to the real nn structure in new_nn->child
+   * this is needed if we want to retrieve a version controlled file, since
+   * we got to climb up the whole path then ...
+   */
+  new_nn->child = nn;
+
+  if(! (node = cvsfs_make_node(new_nn)))
+    {
+      free(new_nn);
+      return NULL;
+    }
+
+  return node;
+}

@@ -17,4 +17,10 @@
 /* create a struct node* for the specified netnode 'nn'.   */
 struct node *cvsfs_make_node(struct netnode *);
 
+/* create a "virtual" struct node* for the specified netnode, which must
+ * represent a version controlled file.  Call with revision == NULL to 
+ * create some kind of parent directory.
+ */
+struct node *cvsfs_make_virtual_node(struct netnode *, struct revision *);
+
 #endif /* NODE_H */
