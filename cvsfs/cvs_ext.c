@@ -41,8 +41,6 @@ cvs_ext_connect(FILE **send, FILE **recv)
   int fd_to_rsh[2], fd_from_rsh[2];
   pid_t pid;
 
-  fprintf(stderr, "gotta connect to remote host!\n");
-
   if(pipe(fd_to_rsh))
     return errno;
   if(pipe(fd_from_rsh))
@@ -53,8 +51,6 @@ cvs_ext_connect(FILE **send, FILE **recv)
       perror(PACKAGE ": cannot fork remote shell client");
       return pid;
     }
-
-  fprintf(stderr, "successfully forked.\n");
 
   if(! pid)
     {
@@ -77,10 +73,6 @@ cvs_ext_connect(FILE **send, FILE **recv)
   close(fd_to_rsh[0]);
   close(fd_from_rsh[1]);
 
-  fprintf(stderr, "now trying to fdopen ...\n");
-
-  *send = NULL; *recv = NULL;
-
   if(! ((*send = fdopen(fd_to_rsh[1], "w"))
 	&& (*recv = fdopen(fd_from_rsh[0], "r"))))
     {
@@ -100,8 +92,6 @@ cvs_ext_connect(FILE **send, FILE **recv)
       return EIO;
     }
 
-  fprintf(stderr, "send: %p, recv: %p\n", *send, *recv);
-
   if(setvbuf(*send, NULL, _IOLBF, 0) || setvbuf(*recv, NULL, _IOLBF, 0))
     {
       perror(PACKAGE ": cannot force streams to be linebuffered");
@@ -110,6 +100,5 @@ cvs_ext_connect(FILE **send, FILE **recv)
       return EIO;
     }
 
-  fprintf(stderr, "cvs_ext_connect returning successful!\n");
   return 0;
 }
