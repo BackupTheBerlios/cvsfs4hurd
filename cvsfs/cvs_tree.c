@@ -45,6 +45,7 @@ volatile unsigned int next_fileno = 1;
 error_t
 cvs_tree_read(struct netnode **rootdir)
 {
+  FUNC_PROLOGUE("cvs_tree_read");
   FILE *send, *recv;
   struct netnode *cwd = (void *) 0xDEADBEEF;
   char *ptr;
@@ -53,7 +54,7 @@ cvs_tree_read(struct netnode **rootdir)
 		   */
 
   if(cvs_connect(&send, &recv))
-    return EIO;
+    FUNC_RETURN(EIO);
 
   fprintf(send, 
 	  "UseUnchanged\n"
@@ -89,22 +90,23 @@ cvs_tree_read(struct netnode **rootdir)
       if(! strncmp(buf, "ok", 2))
 	{
 	  cvs_connection_release(send, recv);
-	  return 0;
+	  FUNC_RETURN(0);
 	}
 
       if(! strncmp(buf, "error", 5))
 	{
 	  cvs_connection_release(send, recv);
-	  return EIO;
+	  FUNC_RETURN(EIO);
 	}
 
       if(buf[1] != ' ') 
 	{
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return EIO;
+	  FUNC_RETURN(EIO);
 	}
 
+      DEBUG("tree-read", "%s\n", buf);
       switch(buf[0])
 	{
 	case 'E': /* E cvs rdiff: Diffing <directory> */
@@ -112,7 +114,7 @@ cvs_tree_read(struct netnode **rootdir)
 	    {
 	      cvs_treat_error(recv, buf);
 	      cvs_connection_release(send, recv);
-	      return EIO;
+	      FUNC_RETURN(EIO);
 	    }
 
 	  ptr += 8;
@@ -124,7 +126,7 @@ cvs_tree_read(struct netnode **rootdir)
 	  if(! cwd)
 	    {
 	      cvs_connection_kill(send, recv);
-	      return ENOMEM;
+	      FUNC_RETURN(ENOMEM);
 	    }
 	  
 	  break;
@@ -134,7 +136,7 @@ cvs_tree_read(struct netnode **rootdir)
 	    {
 	      cvs_treat_error(recv, buf);
 	      cvs_connection_release(send, recv);
-	      return EIO;
+	      FUNC_RETURN(EIO);
 	    }
 	  
 	  {
@@ -145,7 +147,7 @@ cvs_tree_read(struct netnode **rootdir)
 	      {
 		cvs_treat_error(recv, buf);
 		cvs_connection_release(send, recv);
-		return EIO;
+		FUNC_RETURN(EIO);
 	      }
 	    *(ptr ++) = 0;
 
@@ -159,7 +161,7 @@ cvs_tree_read(struct netnode **rootdir)
 	      {
 		cvs_treat_error(recv, NULL);
 		cvs_connection_release(send, recv);
-		return EIO;
+		FUNC_RETURN(EIO);
 	      }
 	  
 	    revision = (ptr += 9);
@@ -167,7 +169,7 @@ cvs_tree_read(struct netnode **rootdir)
 	    if(cvs_tree_enqueue_file(cwd, filename, revision))
 	      {
 		cvs_connection_kill(send, recv);
-		return ENOMEM;
+		FUNC_RETURN(ENOMEM);
 	      }
 
 	    break;
@@ -176,12 +178,12 @@ cvs_tree_read(struct netnode **rootdir)
 	default:
 	  cvs_treat_error(recv, buf);
 	  cvs_connection_release(send, recv);
-	  return EIO; 
+	  FUNC_RETURN(EIO);
 	}
     }
 
   cvs_connection_kill(send, recv);
-  return EIO;
+  FUNC_EPILOGUE(EIO);
 }
 
 
@@ -213,6 +215,13 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
     }
   else do
     {
+      /* if we are in repository browsing mode (i.e. top level module's name
+       * is '.', compare root dir's children names first, since the CVS server
+       * writes something like CVSROOT/Emptydir (omitting the leading '.')
+       */
+      if(! strcmp(dir->name, "."))
+	dir = dir->child;
+
       /* now select this directory from within dir (on the current level) */
       if(dir)
 	do
