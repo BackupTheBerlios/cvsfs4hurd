@@ -5,7 +5,7 @@
 
 AC_PREREQ(2.59)
 AC_INIT(cvsfs4hurd, 0.1, cvsfs4hurd-devel@lists.berlios.de)
-AC_REVISION($Revision: 1.2 $)
+AC_REVISION($Revision: 1.3 $)
 AC_CONFIG_SRCDIR([cvs_files.c])
 AM_CONFIG_HEADER(config.h)
 
@@ -30,6 +30,6 @@ AC_CHECK_LIB(z, gzopen, ,[
    ])
 
 LIBS="-lnetfs $LIBS"
-CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
+CFLAGS="$CFLAGS -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64"
 
 AC_OUTPUT([Makefile])
