@@ -14,7 +14,7 @@ CFLAGS+=-std=gnu99 -D_GNU_SOURCE -D_FILE_OFFSET_BITS=64
 LDFLAGS+=-Wall -W -ggdb
 LDFLAGS+=-lnetfs -lfshelp -liohelp -lthreads -lports
 OBJS=tcpip.o cvsfs.o cvs_connect.o cvs_pserver.o cvs_tree.o netfs.o \
-	node.o cvs_files.o
+	node.o cvs_files.o cvs_ext.o
 
 all: cvsfs
 
