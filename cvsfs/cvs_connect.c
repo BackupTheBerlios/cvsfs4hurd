@@ -202,9 +202,29 @@ cvs_handshake(FILE *send, FILE *recv)
 	    /* tell caller to close connection ... */
 	    return EIO;
 	  }
+
+#if HAVE_LIBZ
+      /* check whether the server supports gzip compression */
+      if(! strstr(buf, "gzip-file-contents"))
+	config.gzip_level = 0; /* not supported. */
+#endif
     }
 
+#if HAVE_LIBZ
+  /* wait for the 'ok' message of valid-requests ... */
+  if(cvs_wait_ok(recv))
+    return EIO;
+
+  if(config.gzip_level)
+    /* request gzip compression ... */
+    fprintf(send, "gzip-file-contents %d\n", config.gzip_level);
+
+  /* 'ok' of valid-requests already read, therefore simply return. */
+  return 0;
+
+#else /* ! HAVE_LIBZ */
   return cvs_wait_ok(recv);
+#endif
 }
 
 
