@@ -51,6 +51,9 @@ static void cvs_connect_sigusr1_handler(int);
 /* callback function for SIGUSR2, to force disconnection of cached conn. */
 static void cvs_connect_sigusr2_handler(int);
 
+/* callback function for SIGPIPE signal (i.e. our remote client died) */
+static void cvs_connect_sigpipe_handler(int);
+
 /* cvs_connect_init
  *
  * initialize cvs_connect stuff
@@ -58,6 +61,8 @@ static void cvs_connect_sigusr2_handler(int);
 void
 cvs_connect_init(void)
 {
+  FUNC_PROLOGUE("cvs_connect_init");
+
   /* first things first: initialize global locks we use */
   spin_lock_init(&cvs_cached_conn_lock);
 
@@ -66,6 +71,9 @@ cvs_connect_init(void)
 
   signal(SIGUSR1, cvs_connect_sigusr1_handler);
   signal(SIGUSR2, cvs_connect_sigusr2_handler);
+  signal(SIGPIPE, cvs_connect_sigpipe_handler);
+
+  FUNC_EPILOGUE_NORET();
 }
 
 /* cvs_connect
@@ -77,6 +85,8 @@ cvs_connect_init(void)
 error_t
 cvs_connect(FILE **send, FILE **recv)
 {
+  FUNC_PROLOGUE("cvs_connect");
+
   /* look whether we've got a cached connection available */
   spin_lock(&cvs_cached_conn_lock);
 
@@ -85,14 +95,25 @@ cvs_connect(FILE **send, FILE **recv)
       cvs_cached_conn.send = NULL;
       cvs_cached_conn.recv = NULL;
 
-      spin_unlock(&cvs_cached_conn_lock);
-      return 0;
+      /* do a quick still-alive check, in order to avoid confusion of the
+       * calling routine 
+       */
+      fprintf(*send, "noop\n");
+
+      if(! cvs_wait_ok(*recv))
+	{
+	  /* okay, connection still alive */
+	  spin_unlock(&cvs_cached_conn_lock);
+	  FUNC_RETURN(0);
+	}
+      else
+	DEBUG("cvs-connect", "cached connection not alive anymore");
     }
 
   spin_unlock(&cvs_cached_conn_lock);
 
   /* get a fresh, new connection ... */
-  return cvs_connect_fresh(send, recv);
+  FUNC_EPILOGUE(cvs_connect_fresh(send, recv));
 }
 
 
@@ -370,4 +391,23 @@ cvs_connect_sigusr2_handler(int sig)
     }
 
   spin_unlock(&cvs_cached_conn_lock);
+}
+
+
+
+/* callback function for SIGPIPE signal (i.e. our remote client died) */
+static void
+cvs_connect_sigpipe_handler(int sig) 
+{
+  FUNC_PROLOGUE_FMT("cvs_connect_sigpipe_hanler", "signal=%d", sig);
+
+  /* just ignore the SIGPIPE signal, which we'll receive, if we either read 
+   * from or write to the pipe to one of our subprocesses (remote shell
+   * clients), in case these are not alive anymore.
+   *
+   * this especially happens if we try to reuse a cache connection,
+   * where the remote side has an idle daemon, etc.
+   */
+
+  FUNC_EPILOGUE_NORET();
 }
