@@ -28,11 +28,10 @@ do, when and how ...
 * todos
 ** available stuff left to fix
 *** urgent
-**** reread whole directory tree after some amount of time passed by
-     let's say every ~30 min. or so? make sure to keep old netnodes and
-     just extend those as necessary - don't ever drop them, 'cause there
-     might be left nodes for them. perhaps adding an 'in-attic-now' flag,
-     telling that the file got deleted in the meantime??
+**** expire revision contents to disk
+     keep revision's content until translator's exit somewhere below /tmp
+     with rather strict umask applied.
+
 **** correctly handle timestamps
 ***** update atimes where necessary
 
@@ -77,4 +76,4 @@ do, when and how ...
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.5 2004/10/02 07:42:41 stesie Exp $
+$Id: HACKING,v 1.6 2004/10/02 12:12:43 stesie Exp $
