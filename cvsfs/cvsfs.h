@@ -56,6 +56,15 @@ struct revision {
   /* revision id, something like 1.14 or 1.2.1.12 */
   char *id;
 
+  /* this revisions access permissions */
+  mode_t perm;
+
+  /* revision's mtime stamp */
+  time_t time;
+
+  /* length of contents field */
+  size_t length;
+
   /* pointer to this revision's contents */
   char *contents;
 
