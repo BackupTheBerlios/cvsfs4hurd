@@ -26,8 +26,16 @@
 
 static struct netnode *cvs_tree_enqueue(struct netnode *, const char *);
 
+/* check whether there already is a netnode for the file with the provided
+ * name, create a new one, if not. add revision information for HEAD revision.
+ */
+static error_t cvs_tree_enqueue_file(struct netnode *cwd, const char *filename,
+				     const char *revision);
+
+
 /* next file number (aka inode) we will assign */
 volatile unsigned int next_fileno = 1;
+
 
 /* netnode *cvs_tree_read
  *
@@ -132,7 +140,6 @@ cvs_tree_read(struct netnode **rootdir)
 	    }
 	  
 	  {
-	    struct netnode *entry;
 	    const char *revision;
 	    const char *filename = (ptr += 5);
 
@@ -159,43 +166,12 @@ cvs_tree_read(struct netnode **rootdir)
 	  
 	    revision = (ptr += 9);
 
-	    entry = malloc(sizeof(*entry));
-	    if(! entry)
+	    if(cvs_tree_enqueue_file(cwd, filename, revision))
 	      {
-		perror(PACKAGE);
 		cvs_connection_kill(send, recv);
-		return ENOMEM; /* pray for cvsfs to survive! */
+		return ENOMEM;
 	      }
 
-	    entry->name = strdup(filename);
-	    entry->sibling = cwd->child;
-	    entry->child = NULL;
-	    entry->parent = cwd;
-	    entry->fileno = next_fileno ++;
-
-	    /* create lock entry for our new netnode, as it is not linked
-	     * to somewhere and this is the only thread to update tree info,
-	     * we don't have to write lock to access entry->revision!
-	     */
-	    rwlock_init(&entry->lock);
-
-	    /* okay, create an initial (mostly empty) revision entry */
-	    entry->revision = malloc(sizeof(*entry->revision));
-	    if(! entry->revision)
-	      {
-		free(entry->name);
-		free(entry);
-
-		cvs_connection_kill(send, recv);
-		return ENOMEM; /* pray for cvsfs to survive! */
-	      }
-
-	    entry->revision->id = strdup(revision);
-	    entry->revision->contents = NULL;
-	    entry->revision->next = NULL;
-	    rwlock_init(&entry->revision->lock);
-
-	    cwd->child = entry;
 	    break;
 	  }
 
@@ -222,7 +198,15 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
   struct netnode *new, *parent = NULL;
   char *end;
 
-  while((end = strchr(path, '/'))) 
+  if(! (end = strchr(path, '/')))
+    {
+      /* request for root directory, else there would be a '/' within
+       * path. return existing rootdir (dir), if available.
+       */
+      if(dir) 
+	return dir;
+    }
+  else do
     {
       /* now select this directory from within dir (on the current level) */
       if(dir)
@@ -235,7 +219,7 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
       
       if(! dir) 
 	{
-	  /* this MUST NOT happen, if it occurs anyways, the seems to be
+	  /* this MUST NOT happen, if it occurs anyways, there seems to be
 	   * something wrong with our cvs server!
 	   */
 	  fprintf(stderr, PACKAGE ": unable to find directory '%s'\n", path);
@@ -245,6 +229,13 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
       path = end + 1;
       dir = (parent = dir)->child;
     }
+  while((end = strchr(path, '/')));
+
+  /* scan parent directory for the entry we're looking for ... */
+  if(parent)
+    for(new = parent->child; new; new = new->sibling)
+      if(! strcmp(new->name, path))
+	return new;
 
   /* okay, create new directory structure right in place ... */
   new = malloc(sizeof(*new));
@@ -267,4 +258,105 @@ cvs_tree_enqueue(struct netnode *dir, const char *path)
     parent->child = new;
 
   return new;
+}
+
+
+/* cvs_tree_enqueue_file
+ *
+ * check whether there already is a netnode for the file with the provided
+ * name, create a new one, if not. add revision information for HEAD revision.
+ */
+static error_t
+cvs_tree_enqueue_file(struct netnode *cwd,
+		      const char *filename, const char *revision)
+{
+  struct netnode *entry;
+
+  /* cvs_tree_add_rev_struct
+   * add a mostly empty revision structure to the specified netnode
+   */
+  error_t cvs_tree_add_rev_struct(struct netnode *entry, const char *revision)
+    {
+      struct revision *cached_rev;
+
+      rwlock_writer_lock(&entry->lock);
+      cached_rev = entry->revision;
+
+      if(! (entry->revision = malloc(sizeof(*entry->revision))))
+	{
+	  rwlock_writer_unlock(&entry->lock);
+	  return ENOMEM; /* pray for cvsfs to survive! */
+	}
+
+      entry->revision->id = strdup(revision);
+      entry->revision->contents = NULL;
+      entry->revision->next = cached_rev;
+
+      rwlock_init(&entry->revision->lock);
+      rwlock_writer_unlock(&entry->lock);
+
+      return 0;
+    }
+
+  /* well, first scan directory tree whether we already have 
+   * the file we're looking for ... 
+   */
+  for(entry = cwd->child; entry; entry = entry->sibling)
+    if(! strcmp(entry->name, filename))
+      {
+	/* okay, we already got a netnode for file 'filename', check whether
+	 * revision information is up to date ...
+	 */
+	rwlock_reader_lock(&entry->lock);
+	if(! strcmp(revision, entry->revision->id))
+	  {
+	    rwlock_reader_unlock(&entry->lock);
+	    return 0; /* head revision id hasn't changed ... */
+	  }
+	rwlock_reader_unlock(&entry->lock);
+
+	/* okay, create new revision struct */
+	if(cvs_tree_add_rev_struct(entry, revision))
+	  return ENOMEM;
+
+	return 0;
+      }
+
+  /* okay, don't have this particular file available,
+   * put a new netnode together ...
+   */
+  if(! (entry = malloc(sizeof(*entry))))
+    {
+      perror(PACKAGE);
+      return ENOMEM; /* pray for cvsfs to survive! */
+    }
+
+  entry->name = strdup(filename);
+  entry->sibling = cwd->child;
+  entry->child = NULL;
+  entry->parent = cwd;
+  entry->fileno = next_fileno ++;
+
+  /* create lock entry for our new netnode, as it is not linked
+   * to somewhere and this is the only thread to update tree info,
+   * we don't have to write lock to access entry->revision!
+   */
+  rwlock_init(&entry->lock);
+
+  entry->revision = NULL;
+  if(cvs_tree_add_rev_struct(entry, revision))
+    {
+      perror(PACKAGE);
+      free(entry->name);
+      free(entry);
+      return ENOMEM;
+    }
+
+  /* do this as late as possible, aka only if the full entry structure
+   * is valid, since we do not lock the netnode -- however we're in the
+   * only thread touching the tree at all
+   */
+  cwd->child = entry;
+
+  return 0;
 }
