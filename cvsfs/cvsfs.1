@@ -12,6 +12,14 @@ controlled files will look like ordinary (local) ones to you afterwards.
 Supply the hostname of the CVS pserver as HOSTNAME, the root CVS directory
 (the one, where CVS' CVSROOT directory is located in) as CVSROOT.
 .TP
+\fB\-z\fR, \fB\-\-gzip\fR=\fILEVEL\fR
+use gzip compression of specified level for file transfers.
+A compression level of 1 means be fast, 9 means best compression.
+
+Unlike cvs cvsfs tends to use gzip compression of level 3 by
+default.  If you want to turn compression off, you need to
+request level 0. 
+.TP
 \fB\-h\fR, \fB\-\-homedir\fR=\fIPATH\fR
 path of your home directory (the directory where cvsfs
 shall look for the .cvspass file, which is used to find
