@@ -33,6 +33,7 @@ typedef struct {
   char *cvs_root;
   char *cvs_module;
 
+  char *homedir; /* homedir of user (location of .cvspass file) */
   FILE *cvs_handle;
 } cvsfs_config;
 extern cvsfs_config config;
