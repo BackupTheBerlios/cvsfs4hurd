@@ -36,6 +36,7 @@
 error_t
 cvs_ext_connect(FILE **send, FILE **recv)
 {
+  char port[10];
   int fd_to_rsh[2], fd_from_rsh[2];
   pid_t pid;
 
@@ -62,8 +63,11 @@ cvs_ext_connect(FILE **send, FILE **recv)
 	  exit(1);
 	}
 
+      snprintf(port, sizeof(port), "%d",
+	       config.cvs_port ? config.cvs_port : 22);
+
       execlp(config.cvs_shell_client, config.cvs_shell_client,
-	     "-p", config.cvs_port ? config.cvs_port : 22,
+	     "-p", port,
 	     "-l", config.cvs_username, config.cvs_hostname,
 	     "--", "cvs", "server", NULL);
       exit(1);
