@@ -36,6 +36,7 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
   char *content = NULL;
   unsigned int content_len = 0;
   unsigned int content_alloc = 0;
+  unsigned short int got_something = 0;
 
   char buf[4096]; /* 4k should be enough for most cvs repositories, if
 		   * cvsfs tell's you to increase this value, please do so.
@@ -94,6 +95,9 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
 
       if(! strncmp(buf, "ok", 2))
 	{
+	  if(! got_something)
+	    return -1; /* no content, sorry. */
+
 	  content = realloc(content, content_len + 1);
 
 	  if(! content)
@@ -127,6 +131,8 @@ cvs_files_cache(FILE *cvs_handle, struct netnode *file, struct revision *rev)
 	  return -1; /* TODO free memory */
 
 	case 'M':
+	  got_something = 1;
+
 	  if(buf[2] != '+')
 	    continue; /* skip patch's header, we don't need it ... */
 
