@@ -35,21 +35,7 @@ do, when and how ...
 **** correctly handle timestamps
 ***** update atimes where necessary
 
-***** keep timestamp in netnode
-      to prevent files from getting assigned a new timestamp when it's 
-      node was freed, after all references were removed.  perhaps assigning
-      time of translator startup or underlying node's mtime is worth 
-      considering.
-
-***** use timestamp from cvs repository
-      how to find that out in a cheap way? rdiff doesn't tell, perhaps
-      status does?? exporting is little bitty tooo expensive, I guess ...
-
 *** things that can wait
-**** show correct filesizes in stats
-     ... not just a plain boring 'zero'. However to find out the files's
-     sizes we probably have to download the file itself. Look for a way,
-     cvs tells the filesize itself ...
 
 ** new features
    these are somewhat in order of urgency ...
@@ -76,4 +62,4 @@ do, when and how ...
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.6 2004/10/02 12:12:43 stesie Exp $
+$Id: HACKING,v 1.7 2004/10/03 18:11:47 stesie Exp $
