@@ -7,97 +7,74 @@
 </head>
 
 <body text="black" bgcolor="white">
-	<table width="100%" cellspacing="3" summary=""><tr>
-		<td><img src="hurd.jpg" border="0" alt="GNU Hurd Logo"></td>
-		<td align="center"><h1>cvsfs4hurd, v. 0.1</h1></td>
-		<td><a href="http://developer.berlios.de" title="BerliOS Developer"> <img src="http://developer.berlios.de/bslogo.php?group_id=2289" width="124" height="32" border="0" alt="BerliOS Developer Logo"></a></td>
-	</tr></table>
-<h2>what is it?</h2>
-<p>cvsfs4hurd is a translator for the GNU Hurd, enabling to bind a (remotely
-located) cvs module right into your local filesystem. It allows you to 
-view version controlled files right the same way, you look at regular, locally
-stored, ones.
+  <table width="100%" cellspacing="3" summary="">
+    <tr>
+      <td><img src="hurd.jpg" border="0" alt="GNU Hurd Logo"></td>
+      <td align="center"><h1>cvsfs4hurd, v. 0.1</h1></td>
+      <td>
+	<a href="http://developer.berlios.de" title="BerliOS Developer">
+	  <img src="http://developer.berlios.de/bslogo.php?group_id=2289"
+	       width="124" height="32" border="0" alt="BerliOS Developer Logo">
+	</a>
+      </td>
+    </tr>
+  </table>
 
-<h2>Current release</h2>
-<p>The latest version is <b>0.1</b>. This is the first release at all,
-therefore please don't expect an bug-free set of programs. If you suffer
-from a bug, please, please tell me.
-
-<p>If you're used to using translators on the
-Hurd you probably won't have trouble using it. As a first little
-intro you may want to read this webpage, the README file and the text
-cvsfs spits out, when you do this:
-	<pre>    $ ./cvsfs --help</pre>
-
-<p>In case you want some more documentation, you may want to look at the
-available man page or the texinfo documentation.
-
-<h3>Source packages</h3>
-<p>The main release is C source code, which can be installed and run on
-GNU Hurd systems. Get copies from berlios.de's file release system:
-<a href="http://developer.berlios.de/project/showfiles.php?group_id=2289">here</a>.
-
-<h3>CVS access</h3>
-<p>To keep up with the development of cvsfs4hurd you can either
-<a href="http://cvs.berlios.de/cgi-bin/viewcvs.cgi/cvsfs4hurd/cvsfs/">browse latest CVS</a>
-with viewcvs, 
-<a href="http://developer.berlios.de/cvs/?group_id=2289">get a checkout</a>
-or (if you already have cvsfs installed) 
-just mount it.
-
-<h2>Bug reports</h2>
-<p>cvsfs4hurd is currently under heavy development and is far from a mature
-state. Therefore, if you installed a packaged version, you probably want
-to consider installing most recent CVS version first.  If the bug is in
-there as well, you (might) want to either
-<a href="http://developer.berlios.de/bugs/?group_id=2289">file a bug report</a>
-or send me an email to <a href="mailto:ssiegl@gmx.de">ssiegl@gmx.de</a>.
-
-<h2><a name="mount">First steps</a></h2>
-<p>If you've successfully compiled and installed cvsfs you probably want to
-try it out. To do so, just try mounting the cvs module of xmltVR3 into
-your local filesystem tree:
-
-<ol>
-<li>create a new directory acting as the underlying node of choice
-    (aka mount-point)
-    <pre>    $ mkdir -p cvsfs_testing</pre>
-</li>
-
-<li>start the translator
-    <pre>    $ settrans -a cvsfs_testing /sbin/cvsfs cvs.sourceforge.net /cvsroot/xmltvr3 xmltVR3</pre>
-</li>
-
-<li>now use the files below the cvsfs_testing/ directory as you're used
-    to, e.g. using emacs, ls, or what ever ...</li>
+  <h2>what is it?</h2>
+  <p><em>cvsfs4hurd</em> is a translator for the GNU Hurd,
+    enabling to bind a (remotely located) cvs module right into your
+    local filesystem. It allows you to view version controlled files
+    right the same way, you look at regular, locally stored, ones.
+  </p>
     
-<li>to get rid of the included filesystem, just leave the cvsfs_testing/
-    directory and enter
-    <pre>    $ settrans -g cvsfs_testing</pre>
-</li>
-</ol>
+  <h2>cvsfs4hurd</h2>
+  <p><em>cvsfs4hurd</em> is actually the first translator I've ever written.
+    It's actually one step towards the GNU Hurd for me (I haven't done much
+    with it before starting to write the translator). <em>cvsfs4hurd</em>
+    is not the very stable thing, lacking some more and closer testing
+    as well (which I will definitely do if there is some more time on my
+    side).
+  </p>
 
-<h2>developer.berlios.de</h2>
-<p>Please have a look at our project pages
-<a href="http://developer.berlios.de/projects/cvsfs4hurd/">here</a>.
+  <p><a href="cvsfs.html">see here</a> for more information on
+    <em>cvsfs4hurd</em> (and <i>download</i> possibility).
+  </p>
 
-<h2>Author and copying</h2>
-<p><a href="mailto:ssiegl@gmx.de">Stefan Siegl</a> is the maintainer of
-cvsfs4hurd. The code comes mostly from him, however netfs-related code was
-copied from hostmux and ftpfs code, parts of the GNU Hurd, 
-published under GNU General Public License.
+  <h2>fuse4hurd</h2>
+  <p>Short time after publishing my <em>cvsfs4hurd</em> in October 2004 I got
+    more and more in touch with the <em>cvsfs</em> project for Linux
+    (<a href="http://cvsfs.sourceforge.net/">http://cvsfs.sourceforge.net</a>)
+    by Petric Frank.
+    
+  <p>Since Petric wanted to rewrite his <em>cvsfs</em> (mainly it's kernel
+    part) I convinced him that using
+    <a href="http://fuse.sourceforge.net">fuse</a> (a library to introduce
+    userspace filesystems to Linux) is a good idea. In turn I decided to write
+    a interface between Hurd's <em>netfs</em> library and fuse, which I
+    call <strong>fuse4hurd</strong> - mainly to have his cvsfs available on
+    the Hurd (which still has some advantages to my cvsfs implementation).
+  </p>
 
-<p>cvsfs4hurd is free software; you may redistribute it under the GNU
-General Publice License as published by the Free Software Foundation, either
-version 2 or (at your option) any later version. (See the COPYING file for
-details).
+  <p><em>fuse4hurd</em> is IMHO not ready to be released, however you might
+    want to look into this projects CVS to find out some more about it :)
+  </p>
 
-<p>There is no warranty for this software, see the file COPYING.
+  <h2>Author and copying</h2>
+  <p><a href="mailto:ssiegl@gmx.de">Stefan Siegl</a> is the maintainer of
+    cvsfs4hurd. The code comes mostly from him, however netfs-related code was
+    copied from hostmux and ftpfs code, parts of the GNU Hurd, 
+    published under GNU General Public License.
 
-<p>Please contact me, with any suggestions, bug reports, or contributions. 
+  <p>cvsfs4hurd is free software; you may redistribute it under the GNU
+    General Publice License as published by the Free Software Foundation,
+    either version 2 or (at your option) any later version.
+    (See the COPYING file for details).
 
-<hr width="100%">
-<p><a href="mailto:ssiegl@gmx.de">Stefan Siegl</a><br>Sunday, 2004-10-10
-</body>
+  <p>There is no warranty for this software, see the file COPYING.
 
-</html>
+  <p>Please contact me, with any suggestions, bug reports, or contributions. 
+    
+    <hr width="100%">
+  <p><a href="mailto:ssiegl@gmx.de">Stefan Siegl</a>
+    <br>$Id: index.html,v 1.2 2005/01/26 19:53:33 stesie Exp $
+</body></html>
