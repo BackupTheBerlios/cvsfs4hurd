@@ -297,9 +297,9 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	  rev->next = NULL;
 	  rwlock_init(&rev->lock);
 
-	  if(cvs_files_cache(nn, rev))
+	  if(cvs_files_hit(nn, rev))
 	    {
-	      /* unable to download wanted revision. */
+	      /* unable to hit wanted revision. */
 	      free(rev->id);
 	      free(rev);
 	      rev = NULL;
