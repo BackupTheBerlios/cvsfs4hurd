@@ -367,7 +367,19 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 		   * a goodthing(TM) ...
 		   */
 
-  if(cvs_connect(&send, &recv))
+  if(rev != file->revision)
+    {
+      /* we're not retrieving the head revision, thus it is likely that
+       * the HEAD revision was sent over the line in this session. However
+       * cvs server tends to transmit only one 'Mod-time' per file and 
+       * session.
+       *
+       * therefore get a fresh connection ...
+       */
+      if(cvs_connect_fresh(&send, &recv))
+	return EIO;
+    }
+  else if(cvs_connect(&send, &recv))
     return EIO;
 
   /* write out request header */
@@ -431,7 +443,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	  memset(&tm, 0, sizeof(tm));
 	  if(strptime(&buf[9], "%d %b %Y %T ", &tm))
 	    t = mktime(&tm);
-	  
+
 	  rev->time = t;
 	  continue;
 	}
