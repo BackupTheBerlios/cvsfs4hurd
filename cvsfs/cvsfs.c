@@ -122,9 +122,7 @@ main(int argc, char **argv)
   /* reset configuration structure to sane defaults */
   memset(&config, 0, sizeof(config));
   config.cvs_mode = PSERVER;
-  config.cvs_port = 2401;
   config.cvs_username = "anonymous";
-  config.cvs_password = NULL;
 
   /* parse command line parameters, first things first. */
   argp_parse(&argp, argc, argv, 0, 0, 0);
