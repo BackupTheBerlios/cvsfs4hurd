@@ -20,6 +20,11 @@
 #include <malloc.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+
+#ifdef HAVE_LIBZ
+#  include <zlib.h>
+#endif
 
 #include "cvsfs.h"
 #include "cvs_files.h"
@@ -70,6 +75,279 @@ cvs_files_cvsattr_to_mode_t(const char *ptr)
 	return perm;
       }
 }	  
+
+
+/* gzip flag byte */
+#define ASCII_FLAG   0x01 /* bit 0 set: file probably ascii text */
+#define HEAD_CRC     0x02 /* bit 1 set: header CRC present */
+#define EXTRA_FIELD  0x04 /* bit 2 set: extra field present */
+#define ORIG_NAME    0x08 /* bit 3 set: original file name present */
+#define COMMENT      0x10 /* bit 4 set: file comment present */
+#define RESERVED     0xE0 /* bits 5..7: reserved */
+
+/* cvs_files_gzip_check_header
+ *
+ * check the gzip header for validity and move the pointers as necessary.
+ * RETURN: 0 on success, 1 if not enough bytes we available or a system error
+ * code on trouble
+ */
+#ifdef HAVE_LIBZ
+static int
+cvs_files_gzip_check_header(char **data, int *len)
+{
+  static const char gzip_magic[2] = {0x1f, 0x8b};
+  int pos = 10;
+  int method;
+  int flags;
+
+  if(*len < 10) 
+    return 1; /* not enough bytes for the header */
+
+  if((*data)[0] != gzip_magic[0] || (*data)[1] != gzip_magic[1])
+    return EIO; /* not a gzip magic */
+
+  method = (*data)[2];
+  flags = (*data)[3];
+  if(method != Z_DEFLATED || (flags & RESERVED))
+    return EIO; /* not deflated or reserved flags set, what about it?? */
+
+  /* bytes 4..9 are time, xflags and os type. ignore 'em ... */
+
+  if(flags & EXTRA_FIELD)
+    {
+      int field_len;
+
+      if(*len < pos + 2) return 1; /* not enough data */
+
+      field_len = (*data)[pos ++];
+      field_len = (*data)[pos ++];
+
+      if(*len < pos + field_len) return 1; /* not enough data
+					    * TODO if extra_field is larger
+					    * than our gzip in buffer, we
+					    * got a problem ...
+					    */
+      pos =+ field_len;
+    }
+  
+  if(flags & ORIG_NAME)
+    do
+      /* skip the original file name ... */
+      if(*len < pos + 1) return 1; /* not enough data */
+    while((*data)[pos ++]);
+
+  if(flags & COMMENT)
+    do
+      /* skip the comment ... */
+      if(*len < pos + 1) return 1; /* not enough data */
+    while((*data)[pos ++]);
+
+  if(flags & HEAD_CRC)
+    {
+      /* skip two bytes, i.e. header's crc */
+      if(*len < pos + 2) return 1; /* not available */
+      pos += 2;
+    }
+
+  /* okay, we got it, therefore adjust *len and *data accordingly */
+  *len -= pos;
+  *data += pos;
+  return 0;
+}
+#endif /* HAVE_LIBZ */
+
+
+
+/* cvs_files_gzip_inflate
+ *
+ * gzip inflate given number of bytes from file-handle into content
+ * return 0 on success.
+ */
+#if HAVE_LIBZ
+static error_t
+cvs_files_gzip_inflate(FILE *recv, size_t bytes, char **content, size_t *len)
+{
+  char input[4096]; /* input buffer */
+  size_t read;
+  z_stream z;
+  int got_header = 0;
+  
+  /* initialize zlib decompression */
+  z.next_in = input;
+  z.avail_in = 0;
+  z.next_out = NULL;
+  z.zalloc = Z_NULL;
+  z.zfree = Z_NULL;
+  z.opaque = Z_NULL;
+
+  switch(inflateInit2(&z, -MAX_WBITS))
+    {
+    case Z_OK:
+      break; /* it worked, perfect. */
+
+    case Z_MEM_ERROR:
+      return ENOMEM;
+
+    case Z_VERSION_ERROR:
+      fprintf(stderr, PACKAGE ": incompatible zlib installed.\n");
+      return EIEIO;
+
+    default:
+      return EIO;
+    }
+
+  /* read 'bytes' bytes from reader handle, but not more than we can store
+   * to input buffer ...
+   */
+  while(bytes && (read = sizeof(input) -
+		  ((char*)z.next_in - input) - z.avail_in)
+	&& (read = fread(z.next_in + z.avail_in, 1,
+			 read < bytes ? read : bytes, recv)))
+    {
+      bytes -= read;
+      z.avail_in += read;
+
+      /* check whether there is a correct gzip header */
+      if(! got_header)
+	switch(cvs_files_gzip_check_header((char **)&z.next_in, &z.avail_in))
+	  {
+	  case 0: /* success */
+	    got_header = 1;
+	    break;
+
+	  case 1: /* not enough data */
+	    continue;
+
+	  default:
+	    inflateEnd(&z);
+
+	    if(z.next_out)
+	      free(z.next_out - z.total_out);
+
+	    return EIO;
+	  }	  
+
+      /* enlare output buffer, if necessary */
+      if(! z.next_out || z.avail_out < (z.avail_in << 2))
+	{
+	  void *ptr;
+	  size_t alloc = z.next_out ? z.total_out << 1 : 16384;
+
+	  ptr = realloc(z.next_out - z.total_out, alloc);
+	  if(! ptr)
+	    {
+	      inflateEnd(&z);
+	      return ENOMEM;
+	    }
+
+	  z.next_out = ptr + z.total_out;
+	  z.avail_out = alloc - z.total_out;
+	}
+
+      /* inflate data now */
+      switch(inflate(&z, Z_NO_FLUSH))
+	{
+	case Z_OK:
+	case Z_STREAM_END:
+	case Z_BUF_ERROR: /* this is not fatal, just not enough
+			   * memory in output buffer
+			   */
+	  break;
+
+	case Z_NEED_DICT:
+	case Z_DATA_ERROR:
+	case Z_STREAM_ERROR:
+	  inflateEnd(&z);
+
+	  if(z.next_out)
+	    free(z.next_out - z.total_out);
+
+	  return EIO;
+		  
+	case Z_MEM_ERROR:
+	default:
+	  inflateEnd(&z);
+
+	  if(z.next_out)
+	    free(z.next_out - z.total_out);
+
+	  return ENOMEM;
+	}
+
+      /* discard inflated bits from the input buffer ... */
+      memmove(input, z.next_in, sizeof(input) - ((char *)z.next_in - input));
+      z.next_in = input;
+    }
+
+  if(bytes)
+    {
+      /* unable to read all data ... */
+      inflateEnd(&z);
+
+      if(z.next_out)
+	free(z.next_out - z.total_out);
+
+      return EIO;
+    }
+
+  while(z.avail_in)
+    {
+      /* data left in input buffer, call inflate to care for that */
+      void *ptr;
+      size_t alloc = z.total_out + (z.avail_in << 2);
+
+      ptr = realloc(z.next_out - z.total_out, alloc);
+      if(! ptr)
+	{
+	  inflateEnd(&z);
+	  return ENOMEM;
+	}
+
+      z.next_out = ptr + z.total_out;
+      z.avail_out = alloc - z.total_out;
+
+      switch(inflate(&z, Z_FINISH))
+	{
+	case Z_STREAM_END:
+	  z.avail_in = 0; /* okay, we're done, forget the trailing bits */
+
+	case Z_OK:
+	case Z_BUF_ERROR: /* this is not fatal, just not enough
+			   * memory in output buffer
+			   */
+	  break;
+	  
+	case Z_NEED_DICT:
+	case Z_DATA_ERROR:
+	case Z_STREAM_ERROR:
+	  inflateEnd(&z);
+
+	  if(z.next_out)
+	    free(z.next_out - z.total_out);
+
+	  return EIO;
+		  
+	case Z_MEM_ERROR:
+	default:
+	  inflateEnd(&z);
+
+	  if(z.next_out)
+	    free(z.next_out - z.total_out);
+
+	  return ENOMEM;
+	}
+    }
+
+  inflateEnd(&z);
+
+  /* okay, processed data should be at z.next_out - z.total_out */
+  free(*content);
+  *content = realloc(z.next_out - z.total_out, z.total_out);
+  *len = z.total_out;
+
+  return 0;
+}
+#endif /* HAVE_LIBZ */
 
 
 
@@ -167,8 +445,36 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
       if(buf[0] == 'u' && buf[1] == '=')
 	rev->perm = cvs_files_cvsattr_to_mode_t(buf);
 
+#if HAVE_LIBZ
+      else if(buf[0] == 'z')
+	{
+	  /* okay, we'll see a gzipped data stream 
+	   * the number tells us the number of bytes we will retrieve,
+	   * not the size of the inflated file!
+	   */
+	  size_t bytes = atoi(buf + 1);
+	  error_t err;
+	  
+	  if(! bytes)
+	    {
+	      cvs_connection_kill(send, recv);
+	      return EIO; /* this should not happen, empty file?? */
+	    }
+
+	  if((err = cvs_files_gzip_inflate(recv, bytes,
+					   &rev->contents, &rev->length)))
+	    {
+	      cvs_connection_kill(send, recv);
+	      return err;
+	    }
+	}
+#endif /* HAVE_LIBZ */
+
       else if(buf[0] >= '0' && buf[0] <= '9')
 	{
+	  /* okay, this tells the length of our file.
+	   * the file is transmitted without compression applied
+	   */
 	  size_t read;
 	  size_t length = atoi(buf);
 	  size_t bytes = length;
