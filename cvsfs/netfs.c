@@ -247,11 +247,13 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 			      char *name, struct node **node)
 {
   error_t err = ENOENT;
-  struct netnode *nn = dir->nn->child;
+  struct netnode *nn;
 
   if(! strcmp(name, "."))
     {
-      /* return another reference to this directory! */
+      /* lookup for a directory, just return another reference to
+       * our cwd 'dir'
+       */
       netfs_nref(dir);
       *node = dir;
       err = 0;
@@ -270,9 +272,49 @@ error_t netfs_attempt_lookup (struct iouser *user, struct node *dir,
 	 */
 	err = EAGAIN;
     }
+  else if(dir->nn->revision)
+    {
+      struct revision *rev = dir->nn->revision;
+      struct netnode *nn = dir->nn->parent ? dir->nn : dir->nn->child;
+
+      for(; rev; rev = rev->next)
+	if(! strcmp(rev->id, name))
+	  break;
+
+      if(! rev && (rev = malloc(sizeof(*rev))))
+	{
+	  /* okay, we don't have this particular revision available;
+	   * create a new revision structure and try retrieving it
+	   */
+	  rev->id = strdup(name);
+	  rev->contents = NULL;
+	  rev->next = NULL;
+
+	  if(cvs_files_cache(config.cvs_handle, nn, rev))
+	    {
+	      /* unable to download wanted revision. */
+	      free(rev->id);
+	      free(rev);
+	      rev = NULL;
+	    }
+	  else
+	    {
+	      /* okay, went well, enqueue into revisions chain */
+	      rev->next = nn->revision->next;
+	      nn->revision->next = rev;
+	    }
+	}
+
+      if(rev)
+	{
+	  /* cool, we've got that revision! */
+	  *node = cvsfs_make_virtual_node(nn, rev);
+	  err = 0;
+	}
+    }
   else
     {
-      for(; nn; nn = nn->sibling)
+      for(nn = dir->nn->child; nn; nn = nn->sibling)
 	if(! strcmp(nn->name, name)) 
 	  {
 	    err = 0; /* hey, we got it! */
@@ -417,10 +459,10 @@ error_t netfs_attempt_read (struct iouser *cred, struct node *node,
        * TODO: consider whether it's possible (if using non-blocking I/O)
        * to fork a retrieval task, and return 0 bytes for the time being ..
        */
-      if(cvs_files_cache(config.cvs_handle, node->nn, node->nn->revision))
+      if(cvs_files_cache(config.cvs_handle,
+			 node->nn->parent ? node->nn : node->nn->child,
+			 node->nn->revision))
 	{
-	  fprintf(stderr, "cvs_files_cache call failed, sorry.\n");
-
 	  *len = 0;
 	  return EIO;
 	}
@@ -586,4 +628,8 @@ netfs_node_norefs (struct node *node)
    * be valid any longer, therefore reset it 
    */
   node->nn->node = NULL;
+
+  if(node->nn->revision && !node->nn->parent)
+    /* node is a virtual node, therefore we need to free the netnode */
+    free(node->nn);
 }
