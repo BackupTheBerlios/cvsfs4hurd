@@ -32,8 +32,8 @@ do, when and how ...
      keep revision's content until translator's exit somewhere below /tmp
      with rather strict umask applied.
 
-**** correctly handle timestamps
-***** update atimes where necessary
+     is this really clever??  I am not too sure, we can leave it to the
+     pager to get rid of old revisions, we don't need anymore ...
 
 *** things that can wait
 
@@ -41,19 +41,9 @@ do, when and how ...
    these are somewhat in order of urgency ...
 
 *** support subversion as an alternate backend
-*** write support
-**** try layering unionsfs/shadowfs on top
-     in order to e.g. 'make' in a source directory.  we probably have to fix
-     timestamp handling, in order to make use of make, don't we?
 
-     write some documentation on that.
+*** display a list of available branches and tags
 
-**** supply <filenode>/commit node
-     if user writes to there, use this message as loginfo.  As of now I guess
-     write support is something really tricky, since we need to check-in the
-     diff between the revision our user opened and the one she wrote ...
-
-     maybe glance at Linux' cvsfs sources how they do it, if they do it et all
 *** make loginfo accessible some way
     (<filenode>/history or something)
 
@@ -62,4 +52,4 @@ do, when and how ...
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.7 2004/10/03 18:11:47 stesie Exp $
+$Id: HACKING,v 1.8 2004/10/10 11:58:41 stesie Exp $
