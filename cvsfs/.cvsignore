@@ -16,3 +16,4 @@ configure
 libtool
 stamp-h
 stamp-h.in
+Makefile
