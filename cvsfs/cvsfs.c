@@ -143,20 +143,6 @@ main(int argc, char **argv)
   task_get_bootstrap_port(mach_task_self(), &bootstrap);
   netfs_init();
 
-  /* download initial root directory */
-  if(cvs_tree_read(&rootdir))
-    {
-      fprintf(stderr, PACKAGE ": unable to get initial cvs tree, stop.\n");
-      return 1;
-    }
-
-  /* map time */
-  if(maptime_map(0, 0, &cvsfs_maptime))
-    {
-      perror(PACKAGE ": cannot map time");
-      return 1;
-    }
-
   /* start up netfs stuff */
   ul_node = netfs_startup(bootstrap, 0);
   
@@ -172,6 +158,20 @@ main(int argc, char **argv)
   stat_template.author = ul_stat.st_author;
   stat_template.fsid = getpid();
   stat_template.mode = ul_stat.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+
+  /* download initial root directory */
+  if(cvs_tree_read(&rootdir))
+    {
+      fprintf(stderr, PACKAGE ": unable to get initial cvs tree, stop.\n");
+      return 1;
+    }
+
+  /* map time */
+  if(maptime_map(0, 0, &cvsfs_maptime))
+    {
+      perror(PACKAGE ": cannot map time");
+      return 1;
+    }
 
   /* create our root node */
   netfs_root_node = cvsfs_make_node(rootdir);
