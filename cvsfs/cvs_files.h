@@ -19,4 +19,9 @@
 /* Download the revision (as specified by rev) of the specified file.  */
 error_t cvs_files_cache(struct netnode *file, struct revision *rev);
 
+/* ask cvs server whether there is a particular revision (as specified by rev)
+ * available. return 0 if yes, ENOENT if not. EIO on communication error.
+ */
+error_t cvs_files_hit(struct netnode *file, struct revision *rev);
+
 #endif /* CVS_FILES_H */

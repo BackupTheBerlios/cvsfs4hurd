@@ -134,13 +134,15 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 
       switch(buf[0])
 	{
-	case 'E': /* we expect a patch, padded by M's, this is not what
-		   * we want to have, keep on complaining 
-		   */
-	  cvs_treat_error(recv, buf);
-	  cvs_connection_release(send, recv);
-	  free(content);
-	  return EIO;
+	case 'E':
+	  /* cvs_treat_error(recv, buf); */
+	  /* cvs_connection_release(send, recv); */
+	  /* free(content); */
+	  /* return EIO; */
+
+	  break; /* don't complain, it's probably only a "noch such tag %s"
+		  * message ...
+		  */
 
 	case 'M':
 	  got_something = 1;
@@ -174,5 +176,99 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
   /* well, got EOF, that shouldn't ever happen ... */
   cvs_connection_kill(send, recv);
   free(content);
+  return EIO;
+}
+
+
+
+/* cvs_files_hit
+ *
+ * ask cvs server whether there is a particular revision (as specified by rev)
+ * available. return 0 if yes, ENOENT if not. EIO on communication error.
+ */
+error_t
+cvs_files_hit(struct netnode *file, struct revision *rev)
+{
+  FILE *send, *recv;
+  unsigned short int got_something = 0;
+
+  char buf[4096]; /* 4k should be enough for most cvs repositories, if
+		   * cvsfs tell's you to increase this value, please do so.
+		   */
+
+  if(cvs_connect(&send, &recv))
+    return EIO;
+
+  /* write out request header */
+  fprintf(send,
+	  "UseUnchanged\n"
+	  "Argument -s\n"
+	  "Argument -r\nArgument 0\n"
+	  "Argument -r\nArgument %s\n"
+	  "Argument ",
+	  rev->id);
+
+  /* write out pathname from rootnode on ... */
+  cvs_files_print_path_recursively(send, file->parent);
+
+  /* last but not least write out the filename */
+  fprintf(send, "%s\n", file->name);
+
+  /* we need an rdiff ... */
+  fprintf(send, "rdiff\n");
+
+  /* okay, now read the server's response, which either is something
+   * "M" char padded or an E, error couple.
+   */
+  while(fgets(buf, sizeof(buf), recv))
+    {
+      if(! strncmp(buf, "ok", 2))
+	{
+	  cvs_connection_release(send, recv);
+
+	  if(! got_something)
+	    return ENOENT; /* no content, sorry. */
+
+	  return 0; /* jippie, looks perfectly, he? */
+	}
+
+      if(! strncmp(buf, "error", 5))
+	{
+	  cvs_connection_release(send, recv);
+	  return EIO;
+	}
+
+      if(buf[1] != ' ') 
+	{
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
+	  return EIO; /* hm, doesn't look got for us ... */
+	}
+
+      switch(buf[0])
+	{
+	case 'E':
+	  /* cvs_treat_error(recv, buf);
+	   * cvs_connection_release(send, recv);
+	   * return EIO;
+	   *
+	   * don't call cvs_treat_error since it's probably a
+	   * "no such tag %s" message ...
+	   */
+	  break;
+
+	case 'M':
+	  got_something = 1;
+	  break;
+	  
+	default:
+	  cvs_treat_error(recv, buf);
+	  cvs_connection_release(send, recv);
+	  return EIO;
+	}
+    }
+
+  /* well, got EOF, that shouldn't ever happen ... */
+  cvs_connection_kill(send, recv);
   return EIO;
 }
