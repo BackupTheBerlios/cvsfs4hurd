@@ -69,6 +69,8 @@ cvsfs_make_node(struct netnode *nn)
   node->nn_stat.st_uid = stat_template.uid;
   node->nn_stat.st_gid = stat_template.gid;
   node->nn_stat.st_size = 0;
+  node->nn_stat.st_blksize = 4096; /* is there a better default?? */
+  node->nn_stat.st_blocks = 0;
   node->nn_stat.st_author = stat_template.author;
 
   if(! nn->revision)
@@ -95,6 +97,7 @@ cvsfs_make_node(struct netnode *nn)
 	{
 	  node->nn_stat.st_mode = nn->revision->perm;
 	  node->nn_stat.st_size = nn->revision->length;
+	  node->nn_stat.st_blocks = (node->nn_stat.st_size >> 9) + 1;
 
 	  node->nn_stat.st_atime =
 	    node->nn_stat.st_mtime =

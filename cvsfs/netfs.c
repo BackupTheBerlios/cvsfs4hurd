@@ -55,6 +55,7 @@ netfs_validate_stat (struct node *node, struct iouser *cred)
 	  node->nn_stat.st_mode = (node->nn->revision->perm | S_IFREG)
 	    &~(S_IWUSR | S_IWGRP | S_IWOTH);
 	  node->nn_stat.st_size = node->nn->revision->length;
+	  node->nn_stat.st_blocks = (node->nn_stat.st_size >> 9) + 1;
 
 	  node->nn_stat.st_mtime =
 	    node->nn_stat.st_ctime = node->nn->revision->time;
