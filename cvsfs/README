@@ -31,6 +31,23 @@ cvsfs4hurd - the CVS virtual filesystem for the GNU Hurd
    to enter the directory.  Feel free to ls, emacs, etc. as long as you'd
    like to ;-)
 
+ 
+ cvs server access through :ext:
+========================================
+   cvsfs is able to connect to a remotely located repository
+   through rsh or ssh instead of only pserver. If you want or need to
+   do so, specify -r on the command line.
+
+   For example I could use 
+
+     settrans -a test ./cvsfs -rssh -u stesie cvs.berlios.de \
+        /cvsroot/cvsfs4hurd cvsfs
+
+   to access the CVS repository of cvsfs4hurd.
+
+   You probably want to use authorized-keys feature of ssh, so you
+   don't have to enter your account's password every other time.
+
 
  it doesn't work! what to do now?
 ========================================
@@ -54,4 +71,4 @@ have fun with cvsf4hurd
 Stefan Siegl <ssiegl@gmx.de>
 
 
-$Id: README,v 1.1 2004/09/25 08:23:31 stesie Exp $
+$Id: README,v 1.2 2004/10/02 07:42:41 stesie Exp $

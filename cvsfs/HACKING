@@ -55,7 +55,6 @@ do, when and how ...
 ** new features
    these are somewhat in order of urgency ...
 
-*** support cvs access over ssh (ext), not only pserver
 *** support subversion as an alternate backend
 *** write support
 **** try layering unionsfs/shadowfs on top
@@ -78,4 +77,4 @@ do, when and how ...
 
 
 jupp, enough for the time being ...
-$Id: HACKING,v 1.4 2004/09/28 21:59:04 stesie Exp $
+$Id: HACKING,v 1.5 2004/10/02 07:42:41 stesie Exp $
