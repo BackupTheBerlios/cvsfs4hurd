@@ -22,8 +22,6 @@
 #include "cvs_connect.h"
 #include "cvs_tree.h"
 
-#define PACKAGE "cvsfs"
-
 static struct netnode *cvs_tree_enqueue(struct netnode *, const char *);
 
 /* check whether there already is a netnode for the file with the provided

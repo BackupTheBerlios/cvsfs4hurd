@@ -28,8 +28,6 @@
 
 #include "tcpip.h"
 
-#define PACKAGE "cvsfs"
-
 /* tcpip_connect
  *
  * try to connect to the specified tcp/ip socket, wrap to stdio.h's FILE*

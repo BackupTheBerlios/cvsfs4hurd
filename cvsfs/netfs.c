@@ -15,10 +15,6 @@
 #  include <config.h>
 #endif
 
-#define PACKAGE "cvsfs"
-#define VERSION "0.1"
-
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <dirent.h>

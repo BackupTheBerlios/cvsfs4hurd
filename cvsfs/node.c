@@ -15,9 +15,6 @@
 #  include <config.h>
 #endif
 
-#define PACKAGE "cvsfs"
-#define VERSION "0.1"
-
 #include "cvsfs.h"
 #include "node.h"
 

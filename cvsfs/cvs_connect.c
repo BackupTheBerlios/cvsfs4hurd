@@ -27,8 +27,6 @@
 #include "cvs_ext.h"
 #include "cvs_tree.h"
 
-#define PACKAGE "cvsfs"
-
 /* do cvs handshake, aka tell about valid responses and check whether all
  * necessary requests are supported.
  */

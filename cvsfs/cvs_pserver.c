@@ -15,8 +15,6 @@
 #  include <config.h>
 #endif
 
-#define PACKAGE "cvsfs"
-
 #include <string.h>
 #include <malloc.h>
 #include <unistd.h>

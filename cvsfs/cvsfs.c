@@ -15,9 +15,6 @@
 #  include <config.h>
 #endif
 
-#define PACKAGE "cvsfs"
-#define VERSION "0.1"
-
 #include <stdio.h>
 #include <argp.h>
 #include <string.h>
