@@ -1,5 +1,5 @@
 \input texinfo @c -*- texinfo -*- 
-@c $Id: cvsfs.texi,v 1.1 2004/10/08 18:59:04 stesie Exp $
+@c $Id: cvsfs.texi,v 1.2 2004/10/09 09:52:20 stesie Exp $
 @c %**start of header
 @setfilename cvsfs.info
 @include version.texi
@@ -52,6 +52,7 @@ virtual filesystem translator.
 * Overview::                    On how to get in touch.
 * Authentication::              Using username/password to log in.
 * Remote Shell Connections::    Using rsh or ssh to connect to the cvs host.
+* File Status Information::     File's status and access permissions.
 * Copying This Manual::
 * Index::
 @end menu
@@ -281,6 +282,51 @@ to a terminal on the Hurd.  Therefore you need to configure it to
 put you straight to the command prompt when calling it something like 
 @code{ssh -l USERNAME HOSTNAME}.  To allow this, you probably want to
 create a @code{$HOME/.ssh/authorized_keys} file on the remote host.
+
+@c ---------------------------------------------------------------------------
+@node File Status Information
+@chapter File Status Information
+@cindex File Status Information
+
+In order to serve true information on each file's status (thus length
+of file, timestamps as well as permissions) @sc{cvsfs} needs
+to download this information from the CVS server.  However to retrieve
+this, @sc{cvsfs} has to download the whole revision,
+including it's content. 
+
+Suppose you request an @code{ls -lR} from the top directory of the
+mapped CVS module.  @sc{cvsfs} will need to download all the files to
+provide the information to you, therefore being painfully slow.
+
+There are two possibilities towards omitting that:
+
+@table @asis
+@item do not request stats unless you need to
+
+This is probably the easiest possibility, however this involves, that
+you probably cannot use graphical file managers like xfm or gmc, as
+those call @code{stat} function automatically.  Furthermore you will
+need to take care of @code{ls} tending to do coloured output, which
+will check for executable flags, etc. as well.
+
+@item supply @option{--nostats} option to @sc{cvsfs}
+
+If you supply @option{--nostats} option to this translator you will
+never wait for @sc{cvsfs} to download for simply filling stats
+information. However all files will be reported to be zero bytes long,
+have the current time as their timestamps and have only reading
+permissions set. 
+
+@sc{cvsfs} has no possibility to figure out whether a particular file
+is executable.  Therefore if you want to run an executable from a
+virtually included CVS module you need to omit using
+@option{--nostats}. 
+
+@end table
+
+On the whole you should get used to using @option{--nostats} as you
+probably want to just read through one or two files; opposed to using
+@sc{cvsfs} to serve files to compile a source package.
 
 @c ---------------------------------------------------------------------------
 @node Copying This Manual
