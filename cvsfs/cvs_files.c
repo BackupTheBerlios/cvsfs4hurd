@@ -23,6 +23,20 @@
 #include "cvs_files.h"
 #include "cvs_connect.h"
 
+/* cvs_files_print_path_recursively
+ *
+ * recurse from dir upwards to the root node and write out the directories'
+ * names to cvs_handle as falling back.
+ */
+static void
+cvs_files_print_path_recursively(FILE *cvs_handle, struct netnode *dir)
+{
+  if(dir->parent)
+    cvs_files_print_path_recursively(cvs_handle, dir->parent);
+  fprintf(cvs_handle, "%s/", dir->name);
+}
+
+
 /* cvs_files_cache
  *
  * Download the revision (as specified by rev) of the specified file. 
@@ -55,16 +69,7 @@ cvs_files_cache(struct netnode *file, struct revision *rev)
 	  "Argument ",
 	  rev->id);
 
-  /* now write out the path to our file, recurse up to the root-node and
-   * start writing out each directory's name
-   */
-  void cvs_files_print_path_recursively(FILE *cvs_handle, struct netnode *dir)
-    {
-      if(dir->parent)
-	cvs_files_print_path_recursively(cvs_handle, dir->parent);
-      fprintf(cvs_handle, "%s/", dir->name);
-    }
-
+  /* write out pathname from rootnode on ... */
   cvs_files_print_path_recursively(send, file->parent);
 
   /* last but not least write out the filename */
