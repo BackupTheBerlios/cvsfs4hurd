@@ -25,6 +25,7 @@
 #include "cvs_connect.h"
 #include "cvs_pserver.h"
 #include "cvs_ext.h"
+#include "cvs_tree.h"
 
 #define PACKAGE "cvsfs"
 
@@ -271,6 +272,16 @@ cvs_treat_error(FILE *cvs_handle, char *msg)
 static void 
 cvs_connect_sigalrm_handler(int signal) 
 {
+  static time_t cvs_tree_expiration = 0;
+
+  /* update directory tree, by default every 1800 sec. */
+  if(! cvs_tree_expiration)
+    time(&cvs_tree_expiration);
+
+  if(time(NULL) - cvs_tree_expiration > 1800)
+    cvs_tree_read(&rootdir);
+
+  /* expire rather old cached connections ... */
   spin_lock(&cvs_cached_conn_lock);
 
   if(cvs_cached_conn.send
