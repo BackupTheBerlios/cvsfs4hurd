@@ -5,7 +5,7 @@
 # Written by Stefan Siegl <ssiegl@gmx.de>
 #
 
-sbin_PROGRAMS=cvsfs
+bin_PROGRAMS=cvsfs
 
 cvsfs_SOURCES= \
 	       cvs_connect.c cvs_connect.h \
@@ -20,4 +20,4 @@ cvsfs_SOURCES= \
 man_MANS=cvsfs.1
 info_TEXINFOS = cvsfs.texi
 
-EXTRA_DIST=
+EXTRA_DIST=${man_MANS}
