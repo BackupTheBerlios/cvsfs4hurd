@@ -150,7 +150,8 @@ extern struct netnode *rootdir;
   do \
     { \
       const char *debug_func_name = func_name; \
-      DEBUG("tracing", "entering %s ", debug_func_name); \
+      DEBUG("tracing", "entering %s (" __FILE__ ":%d) ", \
+	    debug_func_name, __LINE__); \
       if(config.debug_port) \
         { \
           fmt; \
@@ -170,18 +171,31 @@ extern struct netnode *rootdir;
       DEBUG("tracing", "leaving %s\n", debug_func_name); \
     } while(0);
 
+#define FUNC_RETURN_(ret, fmt) \
+      { \
+        int retval = (ret); \
+        DEBUG("tracing", "leaving %s (" __FILE__ ":%d) ret=%d ", \
+	      debug_func_name, __LINE__, retval); \
+        if(config.debug_port) \
+          { \
+	    fmt; \
+	    fprintf(config.debug_port, "\n"); \
+	  } \
+        return retval; \
+      }
+
 #define FUNC_EPILOGUE_(ret, fmt) \
-      DEBUG("tracing", "leaving %s ret=%d ", debug_func_name, ret); \
-      if(config.debug_port) \
-        { \
-	  fmt; \
-	  fprintf(config.debug_port, "\n"); \
-	} \
-      return ret; \
+      FUNC_RETURN_(ret, fmt) \
     } while(0);
+
+#define FUNC_RETURN_FMT(ret, fmt...) \
+  FUNC_RETURN_(ret, fprintf(config.debug_port, fmt))
 
 #define FUNC_EPILOGUE_FMT(ret, fmt...) \
   FUNC_EPILOGUE_(ret, fprintf(config.debug_port, fmt))
+
+#define FUNC_RETURN(ret) \
+  FUNC_RETURN_(ret, (void)0)
 
 #define FUNC_EPILOGUE(ret) \
   FUNC_EPILOGUE_(ret, (void)0)
