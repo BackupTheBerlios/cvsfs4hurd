@@ -90,7 +90,8 @@ cvsfs_make_node(struct netnode *nn)
     }
   else
     {
-      if(nn->revision->contents)
+      if(nn->revision->contents
+	 && ! config.nostats)
 	{
 	  node->nn_stat.st_mode = nn->revision->perm;
 	  node->nn_stat.st_size = nn->revision->length;

@@ -35,6 +35,12 @@ typedef struct {
   char *cvs_module;
 
   char *homedir; /* homedir of user (location of .cvspass file) */
+
+  /* whether or whether not the user wants to have no true stats information,
+   * this would save downloading revisions just to have the timestamp and
+   * permissions set correctly.
+   */
+  unsigned nostats :1;
 } cvsfs_config;
 extern cvsfs_config config;
 

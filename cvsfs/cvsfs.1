@@ -17,6 +17,17 @@ path of your home directory (the directory where cvsfs
 shall look for the .cvspass file, which is used to find
 out which password to use to authenticate)
 .TP
+\fB\-n\fR, \fB\-\-nostats\fR
+do not download revisions to aquire stats information.
+
+cvsfs has to download each whole file if it needs to tell the timestamp
+or set permissions of a particular revision.  Therefore cvsfs needs to
+download quite a lot of data if you e.g. need a directory listing with
+true stats information.  In case you are not in need of such, you can
+specify this option.  Filesize will be reported as zero and timestamp
+as current - no downloading will happen unless you open the file for
+reading. 
+.TP
 \fB\-p\fR, \fB\-\-port\fR=\fIPORT\fR
 port to connect to on given host (if not using
 standard port, for pserver 2401)

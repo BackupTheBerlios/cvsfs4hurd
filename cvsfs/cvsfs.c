@@ -75,6 +75,7 @@ enum
     OPT_USER = 'u',
     OPT_HOMEDIR = 'h',
     OPT_REMOTE = 'r',
+    OPT_NOSTATS = 'n',
   };
 
 static const struct argp_option cvsfs_options[] =
@@ -87,6 +88,8 @@ static const struct argp_option cvsfs_options[] =
       "path of your home directory (= path to .cvspass file)", 0 },
     { "remote", OPT_REMOTE, "CLIENT", OPTION_ARG_OPTIONAL,
       "connect through :ext: remote shell client CLIENT to cvs host", 0 },
+    { "nostats", OPT_NOSTATS, 0, 0,
+      "do not download revisions to aquire stats information", 0 },
 
     /* terminate list */
     { NULL, 0, NULL, 0, NULL, 0 }
@@ -194,6 +197,10 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
 
     case OPT_HOMEDIR:
       config.homedir = strdup(arg);
+      break;
+
+    case OPT_NOSTATS:
+      config.nostats = 1;
       break;
 
     case OPT_REMOTE:

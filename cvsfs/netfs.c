@@ -39,7 +39,8 @@
 error_t
 netfs_validate_stat (struct node *node, struct iouser *cred)
 {
-  if(node->nn->revision && node->nn->parent)
+  if(! config.nostats
+     && node->nn->revision && node->nn->parent)
     {
       if(! node->nn->revision->contents)
 	{
