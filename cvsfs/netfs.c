@@ -608,28 +608,9 @@ netfs_get_dirents (struct iouser *cred, struct node *dir,
 		   vm_size_t max_data_len, int *data_entries)
 {
   FUNC_PROLOGUE_NODE("netfs_get_dirents", dir);
-  error_t err;
-  int count;
-  size_t size = 0;		/* Total size of our return block.  */
+  error_t err = 0;
+  int count = 0;
   struct netnode *first_nn, *nn;
-
-  /* Add the length of a directory entry for NAME to SIZE and return true,
-     unless it would overflow MAX_DATA_LEN or NUM_ENTRIES, in which case
-     return false.  */
-  int bump_size (const char *name)
-    {
-      if (num_entries == -1 || count < num_entries)
-	{
-	  size_t new_size = size + DIRENT_LEN (strlen (name));
-	  if (max_data_len > 0 && new_size > max_data_len)
-	    return 0;
-	  size = new_size;
-	  count++;
-	  return 1;
-	}
-      else
-	return 0;
-    }
 
   if(dir->nn->revision)
     return ENOTDIR; /* it's a file ... */
@@ -639,88 +620,57 @@ netfs_get_dirents (struct iouser *cred, struct node *dir,
       first_nn && first_entry > count;
       first_nn = first_nn->sibling, count ++);
 
+  size_t size = 0;
+  char *p = *data;
   count = 0;
 
-  /* Make space for the `.' and `..' entries.  */
-  if (first_entry == 0)
-    bump_size (".");
-
-  if (first_entry <= 1)
-    bump_size ("..");
-
-  /* let's see, how much space we need for the result ... */
-  for(nn = first_nn; nn; nn = nn->sibling)
-    if(! bump_size(nn->name))
-      break;
-
-  /*  if(! size)
-   *    {
-   *      *data = NULL;
-   *      *data_len = 0;
-   *      *data_entries = 0;
-   *      return 0;
-   *    }
-   */
-
-  /* Allocate it.  */
-  *data = mmap (0, size, PROT_READ | PROT_WRITE, MAP_ANON, 0, 0);
-  err = ((void *) *data == (void *) -1) ? errno : 0;
-
-  if (! err)
-    /* Copy out the result.  */
+  int add_dir_entry (const char *name, ino_t fileno, int type)
     {
-      char *p = *data;
-
-      int add_dir_entry (const char *name, ino_t fileno, int type)
+      if (num_entries == -1 || count < num_entries)
 	{
-	  if (num_entries == -1 || count < num_entries)
-	    {
-	      struct dirent hdr;
-	      size_t name_len = strlen (name);
-	      size_t sz = DIRENT_LEN (name_len);
+	  struct dirent hdr;
+	  size_t name_len = strlen (name);
+	  size_t sz = DIRENT_LEN (name_len);
 
-	      if (sz > size)
-		return 0;
-	      else
-		size -= sz;
-
-	      hdr.d_fileno = fileno;
-	      hdr.d_reclen = sz;
-	      hdr.d_type = type;
-	      hdr.d_namlen = name_len;
-
-	      memcpy (p, &hdr, DIRENT_NAME_OFFS);
-	      strcpy (p + DIRENT_NAME_OFFS, name);
-	      p += sz;
-
-	      count++;
-
-	      return 1;
-	    }
-	  else
+	  if (sz + size > *data_len)
 	    return 0;
+	  else
+	    size += sz;
+
+	  hdr.d_fileno = fileno;
+	  hdr.d_reclen = sz;
+	  hdr.d_type = type;
+	  hdr.d_namlen = name_len;
+
+	  memcpy (p, &hdr, DIRENT_NAME_OFFS);
+	  strcpy (p + DIRENT_NAME_OFFS, name);
+	  p += sz;
+
+	  count++;
+
+	  return 1;
 	}
-
-      *data_len = size;
-      *data_entries = count;
-
-      count = 0;
-
-      /* Add `.' and `..' entries.  */
-      if (first_entry == 0)
-	add_dir_entry (".", 2, DT_DIR);
-      if (first_entry <= 1)
-	add_dir_entry ("..", 2, DT_DIR);
-
-      /* okay, now tell about the real entries ... */
-      for(nn = first_nn; nn; nn = nn->sibling)
-	if(! add_dir_entry(nn->name, nn->fileno,
-			   nn->revision ? DT_REG : DT_DIR))
-	  break;
+      else
+	return 0;
     }
 
+  /* Add `.' and `..' entries.  */
+  if (first_entry == 0)
+    add_dir_entry (".", 2, DT_DIR);
+  if (first_entry <= 1)
+    add_dir_entry ("..", 2, DT_DIR);
+
+  /* okay, now tell about the real entries ... */
+  for(nn = first_nn; nn; nn = nn->sibling)
+    if(! add_dir_entry(nn->name, nn->fileno,
+		       nn->revision ? DT_REG : DT_DIR))
+      break;
+
+  *data_len = size;
+  *data_entries = count;
+
   fshelp_touch (&dir->nn_stat, TOUCH_ATIME, cvsfs_maptime);
-  FUNC_EPILOGUE(err);
+  FUNC_EPILOGUE_FMT(err, "wrote %d entries to %d bytes.", count, size);
 }
 
 
