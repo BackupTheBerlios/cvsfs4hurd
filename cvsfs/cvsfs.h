@@ -41,6 +41,12 @@ typedef struct {
    * permissions set correctly.
    */
   unsigned nostats :1;
+
+#if HAVE_LIBZ
+  /* which gzip level to use for file requests */
+  unsigned gzip_level :4;
+#endif
+
 } cvsfs_config;
 extern cvsfs_config config;
 
