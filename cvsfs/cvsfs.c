@@ -1,7 +1,7 @@
 /**********************************************************
  * cvsfs.c
  *
- * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Publice License,
@@ -57,7 +57,7 @@ static const struct argp_child argp_children[] =
 /* documentation, written out when called with either --usage or --help */
 const char *argp_program_version = "cvsfs (" PACKAGE ") " VERSION "\n"
 "Written by Stefan Siegl\n\n"
-"Copyright (C) 2004, Stefan Siegl <ssiegl@gmx.de>, Germany\n"
+"Copyright (C) 2004,05 Stefan Siegl <ssiegl@gmx.de>, Germany\n"
 "This is free software; see the source for copying conditions.  There is NO\n"
 "warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
 "\n";
@@ -76,6 +76,7 @@ enum
     OPT_HOMEDIR = 'h',
     OPT_REMOTE = 'r',
     OPT_NOSTATS = 'n',
+    OPT_DEBUG = 'd',
 #ifdef HAVE_LIBZ
     OPT_GZIP = 'z',
 #endif
@@ -93,6 +94,8 @@ static const struct argp_option cvsfs_options[] =
       "connect through :ext: remote shell client CLIENT to cvs host", 0 },
     { "nostats", OPT_NOSTATS, 0, 0,
       "do not download revisions to aquire stats information", 0 },
+    { "debug", OPT_DEBUG, "FILE", OPTION_ARG_OPTIONAL,
+      "print debug output to FILE or stderr", 0 },
 #if HAVE_LIBZ
     { "gzip", OPT_GZIP, "LEVEL", 0,
       "use gzip compression of specified level for file transfers", 0 },
@@ -121,14 +124,11 @@ main(int argc, char **argv)
 
   cvs_connect_init();
 
-  /* stderr = fopen("cvsfs.log", "w");
-   * setvbuf(stderr, NULL, _IONBF, 0);
-   */
-
   /* reset configuration structure to sane defaults */
   memset(&config, 0, sizeof(config));
   config.cvs_mode = PSERVER;
   config.cvs_username = "anonymous";
+  config.debug_port = NULL; /* no debugging by default */
 #if HAVE_LIBZ
   config.gzip_level = 3;
 #endif
@@ -208,6 +208,21 @@ parse_cvsfs_opt(int key, char *arg, struct argp_state *state)
 
     case OPT_NOSTATS:
       config.nostats = 1;
+      break;
+
+    case OPT_DEBUG:
+      if(arg)
+	{
+	  config.debug_port = fopen(arg, "w");
+	  if(errno)
+	    perror(PACKAGE);
+	}
+
+      /* if either no file was specified or in case we cannot open it,
+       * write debugging output to standard error */
+      if(! config.debug_port)
+	config.debug_port = stderr;
+
       break;
 
 #if HAVE_LIBZ

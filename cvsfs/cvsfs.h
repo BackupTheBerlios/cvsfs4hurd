@@ -1,7 +1,7 @@
 /**********************************************************
  * cvsfs_config.h
  *
- * Copyright 2004, Stefan Siegl <ssiegl@gmx.de>, Germany
+ * Copyright (C) 2004, 2005 by Stefan Siegl <ssiegl@gmx.de>, Germany
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Publice License,
@@ -46,6 +46,10 @@ typedef struct {
   /* which gzip level to use for file requests */
   unsigned gzip_level :4;
 #endif
+
+  /* file-handle to write debug information out to,
+   * NULL, if no debug info is to be written out */
+  FILE *debug_port;
 
 } cvsfs_config;
 extern cvsfs_config config;
@@ -134,5 +138,52 @@ struct netnode {
 
 /* pointer to root netnode */
 extern struct netnode *rootdir;
+
+
+
+/* helper macros for debugging ****/
+#define DEBUG(cat,msg...) \
+  if(config.debug_port) \
+    fprintf(config.debug_port, PACKAGE ": " cat ": " msg);
+
+#define FUNC_PROLOGUE_(func_name, fmt...) \
+  do \
+    { \
+      const char *debug_func_name = func_name; \
+      DEBUG("tracing", "entering %s ", debug_func_name); \
+      if(config.debug_port) \
+        { \
+          fmt; \
+	  fprintf(config.debug_port, "\n"); \
+	}
+
+#define FUNC_PROLOGUE(func_name) \
+  FUNC_PROLOGUE_(func_name, (void)0)
+
+#define FUNC_PROLOGUE_FMT(func_name, fmt...) \
+  FUNC_PROLOGUE_(func_name, fprintf(config.debug_port, fmt))
+
+#define FUNC_PROLOGUE_NODE(func_name, node) \
+  FUNC_PROLOGUE_FMT(func_name, "node=%s", (node)->nn->name)
+
+#define FUNC_EPILOGUE_NORET() \
+      DEBUG("tracing", "leaving %s\n", debug_func_name); \
+    } while(0);
+
+#define FUNC_EPILOGUE_(ret, fmt) \
+      DEBUG("tracing", "leaving %s ret=%d ", debug_func_name, ret); \
+      if(config.debug_port) \
+        { \
+	  fmt; \
+	  fprintf(config.debug_port, "\n"); \
+	} \
+      return ret; \
+    } while(0);
+
+#define FUNC_EPILOGUE_FMT(ret, fmt...) \
+  FUNC_EPILOGUE_(ret, fprintf(config.debug_port, fmt))
+
+#define FUNC_EPILOGUE(ret) \
+  FUNC_EPILOGUE_(ret, (void)0)
 
 #endif /* CVSFS_CONFIG_H */
